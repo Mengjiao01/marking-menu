@@ -1,11 +1,16 @@
 import { INVALID_EVENT_COLUMNS, TRIAL_RECORD_COLUMNS } from '../utils/csvColumns'
 import { downloadCsv, recordsToCsv } from '../utils/exportCsv'
-import { InvalidEventRecord, TrialRecord } from '../types/experiment'
-import { C1_CONDITION, TRIAL_COUNT } from '../config/conditions'
+import {
+  ConditionConfig,
+  InvalidEventRecord,
+  TrialRecord,
+} from '../types/experiment'
+import { getTrialCount } from '../config/conditions'
 
 interface CompleteScreenProps {
   sessionId: string
   participantId: string
+  condition: ConditionConfig
   records: readonly TrialRecord[]
   invalidEvents: readonly InvalidEventRecord[]
   onRestart: () => void
@@ -17,13 +22,20 @@ const safeFilenamePart = (value: string): string =>
 function CompleteScreen({
   sessionId,
   participantId,
+  condition,
   records,
   invalidEvents,
   onRestart,
 }: CompleteScreenProps): JSX.Element {
-  const sessionRecords = records.filter((record) => record.sessionId === sessionId)
+  const sessionRecords = records.filter(
+    (record) =>
+      record.sessionId === sessionId &&
+      record.conditionId === condition.conditionId,
+  )
   const sessionInvalidEvents = invalidEvents.filter(
-    (record) => record.sessionId === sessionId,
+    (record) =>
+      record.sessionId === sessionId &&
+      record.conditionId === condition.conditionId,
   )
   const correctCount = sessionRecords.filter((record) => record.correct).length
   const averageSelectionTime =
@@ -33,20 +45,21 @@ function CompleteScreen({
       : 0
   const filenameId = safeFilenamePart(participantId)
   const filenameSessionId = safeFilenamePart(sessionId)
+  const trialCount = getTrialCount(condition)
 
   const downloadTrials = (): void => {
-    if (sessionRecords.length !== TRIAL_COUNT) {
+    if (sessionRecords.length !== trialCount) {
       return
     }
     downloadCsv(
-      `${filenameId}-${filenameSessionId}-${C1_CONDITION.id}-trials.csv`,
+      `${filenameId}-${filenameSessionId}-${condition.conditionId}-trials.csv`,
       recordsToCsv(sessionRecords, TRIAL_RECORD_COLUMNS),
     )
   }
 
   const downloadInvalidEvents = (): void => {
     downloadCsv(
-      `${filenameId}-${filenameSessionId}-${C1_CONDITION.id}-invalid-events.csv`,
+      `${filenameId}-${filenameSessionId}-${condition.conditionId}-invalid-events.csv`,
       recordsToCsv(sessionInvalidEvents, INVALID_EVENT_COLUMNS),
     )
   }
@@ -57,7 +70,8 @@ function CompleteScreen({
         <p className="completion-mark" aria-hidden="true">
           ✓
         </p>
-        <h1>25 trials complete</h1>
+        <p className="eyebrow">{condition.label}</p>
+        <h1>{trialCount} trials complete</h1>
         <dl className="results">
           <div>
             <dt>Correct</dt>
@@ -76,7 +90,7 @@ function CompleteScreen({
             className="primary-button"
             type="button"
             onClick={downloadTrials}
-            disabled={sessionRecords.length !== TRIAL_COUNT}
+            disabled={sessionRecords.length !== trialCount}
           >
             Download trial CSV
           </button>

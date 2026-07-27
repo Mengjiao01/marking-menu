@@ -1,4 +1,6 @@
-export function createSessionId(): string {
+import { PrototypeConditionId } from '../types/experiment'
+
+export function createSessionId(conditionId: PrototypeConditionId): string {
   const timestamp = Date.now().toString(36)
   const randomValues = new Uint32Array(2)
 
@@ -13,5 +15,5 @@ export function createSessionId(): string {
     .map((value) => value.toString(36))
     .join('')
 
-  return `c1-${timestamp}-${randomPart}`
+  return `${conditionId.toLowerCase()}-${timestamp}-${randomPart}`
 }

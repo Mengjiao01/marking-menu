@@ -5,8 +5,14 @@ import {
   useRef,
   useState,
 } from 'react'
-import { C1_CONDITION, TRIAL_COUNT } from '../config/conditions'
 import {
+  CONDITIONS,
+  getTrialCount,
+  MINIMUM_SAFE_STAGE_WIDTH,
+  SAFETY_MARGIN,
+} from '../config/conditions'
+import {
+  ConditionConfig,
   InvalidEventRecord,
   InvalidEventType,
   ScheduledTrial,
@@ -14,7 +20,10 @@ import {
 } from '../types/experiment'
 import {
   distance,
+  getActivationCenter,
   getMenuItemPositions,
+  getNearestEdgeDistance,
+  getOutOfBoundsItemIds,
   getSelectedItem,
   Point,
 } from '../utils/geometry'
@@ -22,6 +31,7 @@ import {
 interface ExperimentScreenProps {
   sessionId: string
   participantId: string
+  condition: ConditionConfig
   schedule: readonly ScheduledTrial[]
   onTrialRecorded: (record: TrialRecord) => void
   onInvalidEvent: (record: InvalidEventRecord) => void
@@ -34,16 +44,20 @@ interface GestureState {
   touchDown: Point
   lastPoint: Point
   pathLength: number
+  stageSize: {
+    width: number
+    height: number
+  }
+  activationCenter: Point
 }
 
 type Feedback = 'correct' | 'wrong' | 'invalid-start' | 'pointer-cancel' | null
 
 const FEEDBACK_DURATION_MS = 500
-const SELECTION_RADIUS = C1_CONDITION.targetDiameter / 2
-
 function ExperimentScreen({
   sessionId,
   participantId,
+  condition,
   schedule,
   onTrialRecorded,
   onInvalidEvent,
@@ -64,23 +78,50 @@ function ExperimentScreen({
   const [feedback, setFeedback] = useState<Feedback>(null)
 
   const currentTrial = schedule[trialIndex]
-  const target = C1_CONDITION.items.find((item) => item.id === currentTrial.targetId)
+  const target = condition.targets.find((item) => item.id === currentTrial.targetId)
+  const trialCount = getTrialCount(condition)
 
   if (!target) {
     throw new Error(`Unknown target: ${currentTrial.targetId}`)
   }
 
   const centre = useMemo<Point>(
-    () => ({
-      x: arenaSize.width * C1_CONDITION.centreXRatio,
-      y: arenaSize.height * C1_CONDITION.centreYRatio,
-    }),
-    [arenaSize],
+    () => getActivationCenter(condition.touchLocation, arenaSize),
+    [arenaSize, condition.touchLocation],
   )
   const menuItems = useMemo(
-    () => getMenuItemPositions(C1_CONDITION.items, centre, C1_CONDITION.menuRadius),
-    [centre],
+    () => getMenuItemPositions(condition.targets, centre, condition.menuRadius),
+    [centre, condition.menuRadius, condition.targets],
   )
+  const boundaryIssues = useMemo(
+    () =>
+      CONDITIONS.reduce<string[]>((issues, candidate) => {
+        const candidateCentre = getActivationCenter(
+          candidate.touchLocation,
+          arenaSize,
+        )
+        const candidateItems = getMenuItemPositions(
+          candidate.targets,
+          candidateCentre,
+          candidate.menuRadius,
+        )
+        const itemIds = getOutOfBoundsItemIds(
+          candidateItems,
+          arenaSize,
+          candidate.targetRadius,
+          SAFETY_MARGIN,
+        )
+        return [
+          ...issues,
+          ...itemIds.map((itemId) => `${candidate.conditionId}:${itemId}`),
+        ]
+      }, []),
+    [arenaSize],
+  )
+  const geometryReady =
+    arenaSize.width > 0 &&
+    arenaSize.height > 0 &&
+    boundaryIssues.length === 0
 
   useEffect(() => {
     mountedRef.current = true
@@ -125,6 +166,20 @@ function ExperimentScreen({
     cueTimeRef.current = performance.now()
   }, [trialIndex])
 
+  useEffect(() => {
+    if (
+      import.meta.env.DEV &&
+      arenaSize.width > 0 &&
+      boundaryIssues.length > 0
+    ) {
+      console.warn(
+        `Traditional menu items outside the experiment stage: ${boundaryIssues.join(
+          ', ',
+        )}`,
+      )
+    }
+  }, [arenaSize.width, boundaryIssues])
+
   const pointFromEvent = (event: ReactPointerEvent<HTMLDivElement>): Point => {
     const bounds = event.currentTarget.getBoundingClientRect()
     return {
@@ -154,13 +209,17 @@ function ExperimentScreen({
   ): InvalidEventRecord => ({
     sessionId,
     participantId,
-    conditionId: C1_CONDITION.id,
+    conditionId: condition.conditionId,
     trialNumber: trialIndex + 1,
     targetId: currentTrial.targetId,
     eventType,
     eventTime: performance.now(),
     pointerX: point.x,
     pointerY: point.y,
+    stageWidth: arenaSize.width,
+    stageHeight: arenaSize.height,
+    activationCenterX: centre.x,
+    activationCenterY: centre.y,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
     devicePixelRatio: window.devicePixelRatio,
@@ -195,6 +254,7 @@ function ExperimentScreen({
     if (
       submittedRef.current ||
       gestureRef.current !== null ||
+      !geometryReady ||
       !event.isPrimary ||
       event.button !== 0
     ) {
@@ -204,7 +264,7 @@ function ExperimentScreen({
     event.preventDefault()
     const point = pointFromEvent(event)
 
-    if (distance(point, centre) > C1_CONDITION.activationRadius) {
+    if (distance(point, centre) > condition.startTolerance) {
       submittedRef.current = true
       setFeedback('invalid-start')
       onInvalidEvent(createInvalidEvent('invalid-start', point))
@@ -227,6 +287,8 @@ function ExperimentScreen({
       touchDown: point,
       lastPoint: point,
       pathLength: 0,
+      stageSize: { ...arenaSize },
+      activationCenter: { ...centre },
     }
     setMenuVisible(true)
   }
@@ -254,15 +316,15 @@ function ExperimentScreen({
     const touchUp = pointFromEvent(event)
     gesture.pathLength += distance(gesture.lastPoint, touchUp)
     const touchUpTime = performance.now()
-    const selectedId = getSelectedItem(touchUp, menuItems, SELECTION_RADIUS)
+    const selectedId = getSelectedItem(touchUp, menuItems, condition.targetRadius)
     const correct = selectedId === currentTrial.targetId
     const errorType = selectedId === null ? 'miss' : correct ? 'none' : 'wrong-item'
     const record: TrialRecord = {
       sessionId,
       participantId,
-      conditionId: C1_CONDITION.id,
-      touchLocation: C1_CONDITION.touchLocation,
-      menuLayout: C1_CONDITION.menuLayout,
+      conditionId: condition.conditionId,
+      touchLocation: condition.touchLocation,
+      menuLayout: condition.menuLayout,
       trialNumber: trialIndex + 1,
       targetId: currentTrial.targetId,
       selectedId,
@@ -278,6 +340,14 @@ function ExperimentScreen({
       touchUpX: touchUp.x,
       touchUpY: touchUp.y,
       pathLength: gesture.pathLength,
+      stageWidth: gesture.stageSize.width,
+      stageHeight: gesture.stageSize.height,
+      activationCenterX: gesture.activationCenter.x,
+      activationCenterY: gesture.activationCenter.y,
+      nearestEdgeDistance: getNearestEdgeDistance(
+        gesture.activationCenter,
+        gesture.stageSize,
+      ),
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
       devicePixelRatio: window.devicePixelRatio,
@@ -299,8 +369,8 @@ function ExperimentScreen({
 
     scheduleFeedbackReset(() => {
       if (
-        recordsRef.current.length === TRIAL_COUNT &&
-        schedule.length === TRIAL_COUNT
+        recordsRef.current.length === trialCount &&
+        schedule.length === trialCount
       ) {
         onComplete(recordsRef.current)
         return
@@ -337,7 +407,9 @@ function ExperimentScreen({
           <span>Participant</span>
           <strong>{participantId}</strong>
         </div>
-        <div className="condition-name">{C1_CONDITION.name}</div>
+        <div className="condition-name">
+          {condition.conditionId} · {condition.touchLocation} · {condition.menuLayout}
+        </div>
         <div className="progress">
           <span>Progress</span>
           <strong>
@@ -363,7 +435,12 @@ function ExperimentScreen({
       >
         <div
           className={`activation-point ${menuVisible ? 'is-active' : ''}`}
-          style={{ left: centre.x, top: centre.y }}
+          style={{
+            left: centre.x,
+            top: centre.y,
+            width: condition.startTolerance * 2,
+            height: condition.startTolerance * 2,
+          }}
           aria-hidden="true"
         />
 
@@ -372,7 +449,12 @@ function ExperimentScreen({
             <div
               key={item.id}
               className="menu-item"
-              style={{ left: item.position.x, top: item.position.y }}
+              style={{
+                left: item.position.x,
+                top: item.position.y,
+                width: condition.targetRadius * 2,
+                height: condition.targetRadius * 2,
+              }}
               aria-hidden="true"
             >
               <span>{item.symbol}</span>
@@ -392,6 +474,18 @@ function ExperimentScreen({
             aria-live="assertive"
           >
             {feedbackText}
+          </div>
+        )}
+
+        {!geometryReady && arenaSize.width > 0 && (
+          <div className="device-size-warning" role="alert">
+            <strong>Device width is not suitable for this condition</strong>
+            <span>
+              The experiment stage must be at least {MINIMUM_SAFE_STAGE_WIDTH} CSS px
+              wide and tall enough to show every target with a {SAFETY_MARGIN}px
+              safety margin. Current stage: {arenaSize.width.toFixed(0)} ×{' '}
+              {arenaSize.height.toFixed(0)} CSS px.
+            </span>
           </div>
         )}
       </div>

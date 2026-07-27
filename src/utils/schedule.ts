@@ -6,7 +6,7 @@ export function createBalancedSchedule(
 ): ScheduledTrial[] {
   const trials: ScheduledTrial[] = []
 
-  condition.items.forEach((item) => {
+  condition.targets.forEach((item) => {
     for (let repetition = 0; repetition < condition.repetitions; repetition += 1) {
       trials.push({ targetId: item.id })
     }

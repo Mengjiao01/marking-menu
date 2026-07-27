@@ -1,5 +1,7 @@
 export type ConditionId = 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'C6'
 
+export type PrototypeConditionId = 'C1' | 'C2' | 'C3'
+
 export type TouchLocation = 'Centre' | 'Left' | 'Right'
 
 export type MenuLayout = 'Traditional' | 'Adaptive'
@@ -18,17 +20,15 @@ export interface MenuItem {
 }
 
 export interface ConditionConfig {
-  id: ConditionId
-  name: string
+  conditionId: PrototypeConditionId
+  label: string
   touchLocation: TouchLocation
   menuLayout: MenuLayout
   repetitions: number
-  targetDiameter: number
   menuRadius: number
-  activationRadius: number
-  centreXRatio: number
-  centreYRatio: number
-  items: readonly MenuItem[]
+  targetRadius: number
+  startTolerance: number
+  targets: readonly MenuItem[]
 }
 
 export interface ScheduledTrial {
@@ -56,6 +56,11 @@ export interface TrialRecord {
   touchUpX: number
   touchUpY: number
   pathLength: number
+  stageWidth: number
+  stageHeight: number
+  activationCenterX: number
+  activationCenterY: number
+  nearestEdgeDistance: number
   viewportWidth: number
   viewportHeight: number
   devicePixelRatio: number
@@ -72,6 +77,10 @@ export interface InvalidEventRecord {
   eventTime: number
   pointerX: number
   pointerY: number
+  stageWidth: number
+  stageHeight: number
+  activationCenterX: number
+  activationCenterY: number
   viewportWidth: number
   viewportHeight: number
   devicePixelRatio: number

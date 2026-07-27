@@ -1,8 +1,8 @@
 import { InvalidEventRecord, TrialRecord } from '../types/experiment'
 
 export const STORAGE_KEYS = {
-  trialRecords: 'marking-menu:c1:trial-records',
-  invalidEvents: 'marking-menu:c1:invalid-events',
+  trialRecords: 'marking-menu:trial-records',
+  invalidEvents: 'marking-menu:invalid-events',
 } as const
 
 function loadArray<T>(key: string): T[] {
@@ -13,7 +13,13 @@ function loadArray<T>(key: string): T[] {
 
   try {
     const parsed: unknown = JSON.parse(stored)
-    return Array.isArray(parsed) ? (parsed as T[]) : []
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    return parsed.filter(
+      (record): record is T =>
+        typeof record === 'object' && record !== null && !Array.isArray(record),
+    )
   } catch {
     return []
   }

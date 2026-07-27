@@ -2,9 +2,11 @@ import { useState } from 'react'
 import CompleteScreen from './components/CompleteScreen'
 import ExperimentScreen from './components/ExperimentScreen'
 import SetupScreen from './components/SetupScreen'
-import { C1_CONDITION } from './config/conditions'
+import { DEFAULT_CONDITION_ID, getCondition } from './config/conditions'
 import {
+  ConditionConfig,
   InvalidEventRecord,
+  PrototypeConditionId,
   ScheduledTrial,
   TrialRecord,
 } from './types/experiment'
@@ -18,14 +20,22 @@ function App(): JSX.Element {
   const [screen, setScreen] = useState<Screen>('setup')
   const [sessionId, setSessionId] = useState('')
   const [participantId, setParticipantId] = useState('')
+  const [condition, setCondition] = useState<ConditionConfig>(
+    getCondition(DEFAULT_CONDITION_ID),
+  )
   const [schedule, setSchedule] = useState<ScheduledTrial[]>([])
   const [records, setRecords] = useState<TrialRecord[]>([])
   const [invalidEvents, setInvalidEvents] = useState<InvalidEventRecord[]>([])
 
-  const startExperiment = (nextParticipantId: string): void => {
-    setSessionId(createSessionId())
+  const startExperiment = (
+    nextParticipantId: string,
+    conditionId: PrototypeConditionId,
+  ): void => {
+    const selectedCondition = getCondition(conditionId)
+    setSessionId(createSessionId(conditionId))
     setParticipantId(nextParticipantId)
-    setSchedule(createBalancedSchedule(C1_CONDITION))
+    setCondition(selectedCondition)
+    setSchedule(createBalancedSchedule(selectedCondition))
     setRecords([])
     setInvalidEvents([])
     setScreen('experiment')
@@ -62,6 +72,7 @@ function App(): JSX.Element {
         <ExperimentScreen
           sessionId={sessionId}
           participantId={participantId}
+          condition={condition}
           schedule={schedule}
           onTrialRecorded={handleTrialRecorded}
           onInvalidEvent={handleInvalidEvent}
@@ -72,6 +83,7 @@ function App(): JSX.Element {
         <CompleteScreen
           sessionId={sessionId}
           participantId={participantId}
+          condition={condition}
           records={records}
           invalidEvents={invalidEvents}
           onRestart={restart}
