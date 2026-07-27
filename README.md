@@ -1,13 +1,14 @@
 # Marking Menu Experiment
 
 Mobile web experiment for a master's research project. The current prototype
-implements the three Traditional conditions:
+implements the complete 3 × 2 condition set:
 
 - C1 Centre–Traditional
 - C2 Left–Traditional
 - C3 Right–Traditional
-
-Adaptive conditions are not implemented.
+- C4 Left–Adaptive
+- C5 Right–Adaptive
+- C6 Centre–Adaptive
 
 ## Current experiment flow
 
@@ -32,7 +33,7 @@ transmit data to a server.
 
 ## Geometry
 
-Traditional geometry has one configuration source:
+Shared geometry has one configuration source:
 
 - Menu radius: 72 CSS px
 - Target radius: 24 CSS px
@@ -50,6 +51,14 @@ The minimum stage width for all five targets and the 4px margin is 200 CSS px.
 After every stage resize, the app checks every target without moving it. If the
 stage is too small, formal interaction is blocked and a device-size message is
 shown.
+
+Menu angles are configured separately from touch location:
+
+- Traditional: T1 36°, T2 108°, T3 180°, T4 252°, T5 324°
+- Left–Adaptive: T1 270°, T2 315°, T3 0°, T4 45°, T5 90°
+- Right–Adaptive: T1 90°, T2 135°, T3 180°, T4 225°, T5 270°
+- Centre–Adaptive intentionally uses the same angles as Traditional while
+  remaining a distinct Adaptive condition.
 
 ## CSV data dictionary
 
@@ -108,11 +117,11 @@ npm run preview
 ## Current scope
 
 - React 17, TypeScript, Vite 2, and native CSS
-- C1/C2/C3 parameters have one source in `src/config/conditions.ts`
+- All six condition parameters have one source in `src/config/conditions.ts`
 - Shared experiment types live in `src/types/experiment.ts`
 - CSV export is performed locally in the browser
-- No Adaptive layout, questionnaire, server, database, authentication, or
-  device-model detection
+- No automatic condition order, practice trials, questionnaire, server,
+  database, authentication, analysis, or device-model detection
 
-The development build logs a console warning if a fixed Traditional target falls
+The development build logs a console warning if any configured target falls
 outside the current experiment stage. It never moves targets or changes geometry.

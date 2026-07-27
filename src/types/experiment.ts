@@ -1,6 +1,6 @@
 export type ConditionId = 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'C6'
 
-export type PrototypeConditionId = 'C1' | 'C2' | 'C3'
+export type PrototypeConditionId = ConditionId
 
 export type TouchLocation = 'Centre' | 'Left' | 'Right'
 

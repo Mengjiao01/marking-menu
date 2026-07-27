@@ -173,7 +173,7 @@ function ExperimentScreen({
       boundaryIssues.length > 0
     ) {
       console.warn(
-        `Traditional menu items outside the experiment stage: ${boundaryIssues.join(
+        `Configured menu items outside the experiment stage: ${boundaryIssues.join(
           ', ',
         )}`,
       )

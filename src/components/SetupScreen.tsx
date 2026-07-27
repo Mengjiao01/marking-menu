@@ -28,7 +28,7 @@ function SetupScreen({ onStart }: SetupScreenProps): JSX.Element {
   return (
     <main className="setup-screen screen">
       <section className="setup-card">
-        <p className="eyebrow">Traditional prototype</p>
+        <p className="eyebrow">3 × 2 prototype</p>
         <h1>Marking Menu Experiment</h1>
         <p className="intro">
           Enter the assigned participant code to begin 25 trials. Do not enter a name,
