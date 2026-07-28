@@ -52,8 +52,9 @@ export const ADAPTIVE_ANGLES: Readonly<Record<TouchLocation, AngleMap>> = {
 
 export const TRADITIONAL_MENU_RADIUS = 72
 export const TRADITIONAL_TARGET_RADIUS = 24
-export const START_TOLERANCE = 20
+export const START_TOLERANCE = 24
 export const SAFETY_MARGIN = 4
+export const EXPERIMENT_CONFIG_VERSION = 'pilot-v2-start24'
 export const SAFE_EDGE_INSET =
   TRADITIONAL_MENU_RADIUS + TRADITIONAL_TARGET_RADIUS + SAFETY_MARGIN
 export const CENTRE_X_RATIO = 0.5
@@ -65,6 +66,7 @@ const COMMON_GEOMETRY = {
   menuRadius: TRADITIONAL_MENU_RADIUS,
   targetRadius: TRADITIONAL_TARGET_RADIUS,
   startTolerance: START_TOLERANCE,
+  configVersion: EXPERIMENT_CONFIG_VERSION,
 }
 
 function createTargets(angles: AngleMap): readonly MenuItem[] {

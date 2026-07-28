@@ -91,6 +91,7 @@ function isStudySessionState(value: Record<string, unknown>): value is Record<
     typeof value.participantId === 'string' &&
     typeof value.sequenceCode === 'string' &&
     sequenceCodes.includes(value.sequenceCode) &&
+    typeof value.configVersion === 'string' &&
     Array.isArray(conditionOrder) &&
     conditionOrder.length > 0 &&
     conditionOrder.every(

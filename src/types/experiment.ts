@@ -42,6 +42,7 @@ export interface ConditionConfig {
   menuRadius: number
   targetRadius: number
   startTolerance: number
+  configVersion: string
   targets: readonly MenuItem[]
 }
 
@@ -81,6 +82,10 @@ export interface TrialRecord {
   activationCenterX: number
   activationCenterY: number
   nearestEdgeDistance: number
+  menuRadius: number
+  targetRadius: number
+  startTolerance: number
+  configVersion: string
   viewportWidth: number
   viewportHeight: number
   devicePixelRatio: number
@@ -106,6 +111,10 @@ export interface InvalidEventRecord {
   stageHeight: number
   activationCenterX: number
   activationCenterY: number
+  menuRadius: number
+  targetRadius: number
+  startTolerance: number
+  configVersion: string
   viewportWidth: number
   viewportHeight: number
   devicePixelRatio: number
@@ -140,6 +149,10 @@ export interface PracticeRecord {
   activationCenterX: number
   activationCenterY: number
   nearestEdgeDistance: number
+  menuRadius: number
+  targetRadius: number
+  startTolerance: number
+  configVersion: string
   viewportWidth: number
   viewportHeight: number
   devicePixelRatio: number
@@ -151,6 +164,7 @@ export interface StudySessionState {
   studySessionId: string
   participantId: string
   sequenceCode: SessionSequenceCode
+  configVersion: string
   conditionOrder: PrototypeConditionId[]
   conditionOrderIndex: number
   phase: StudyPhase

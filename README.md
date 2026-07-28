@@ -100,9 +100,11 @@ A normal formal export must contain:
 
 Formal records include `studySessionId`, `blockSessionId`, `sequenceCode`,
 condition and trial numbering, outcome/timing/trajectory fields, actual stage and
-activation geometry, and device context. Practice attempts use a separate schema
-with `practiceTargetNumber` and `attemptNumber`. Invalid events include their
-Practice/Formal phase.
+activation geometry, the active experiment parameters (`menuRadius`,
+`targetRadius`, `startTolerance`, `configVersion`), and device context. Practice
+attempts use a separate schema with `practiceTargetNumber` and `attemptNumber`.
+Invalid events include their Practice/Formal phase and the same parameter
+snapshot.
 
 ## Geometry
 
@@ -110,7 +112,8 @@ All conditions share:
 
 - Menu radius: 72 CSS px
 - Target radius: 24 CSS px
-- Start tolerance: 20 CSS px
+- Start tolerance radius: 24 CSS px
+- Activation diameter: 48 CSS px
 - Safety margin: 4 CSS px
 - Safe edge inset: `72 + 24 + 4 = 100` CSS px
 
@@ -122,6 +125,18 @@ Activation centres depend only on touch location:
 
 Every resize checks all targets in all six conditions. An unsuitable stage blocks
 interaction rather than changing a target, radius, or angle.
+
+The current parameter snapshot is identified by:
+
+```text
+configVersion = pilot-v2-start24
+```
+
+The start tolerance was increased from 20 to 24 CSS px after iPhone pilot data
+showed that most invalid starts were near the previous activation boundary. The
+menu radius, target radius, safety margin, safe edge inset, target angles, and
+touch locations were not changed. `SAFE_EDGE_INSET` remains
+`72 + 24 + 4 = 100` CSS px and does not depend on start tolerance.
 
 ## Windows development
 

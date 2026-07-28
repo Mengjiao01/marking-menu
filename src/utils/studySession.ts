@@ -1,4 +1,8 @@
-import { CONDITIONS, getCondition } from '../config/conditions'
+import {
+  CONDITIONS,
+  EXPERIMENT_CONFIG_VERSION,
+  getCondition,
+} from '../config/conditions'
 import {
   getSequenceAssignment,
   validateSequences,
@@ -59,6 +63,7 @@ export function createStudySession(
     studySessionId: createStudySessionId(),
     participantId,
     sequenceCode: assignment.sequenceCode,
+    configVersion: EXPERIMENT_CONFIG_VERSION,
     conditionOrder,
     conditionOrderIndex: 0,
     phase: 'condition-intro',
@@ -165,6 +170,9 @@ export function validateFormalRecords(
   }
 
   records.forEach((record, index) => {
+    if (record.configVersion !== session.configVersion) {
+      errors.push(`Row ${index + 1} uses a different experiment configuration.`)
+    }
     if (record.globalTrialNumber !== index + 1) {
       errors.push(`Global trial numbering is not contiguous at row ${index + 1}.`)
     }
