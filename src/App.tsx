@@ -1,99 +1,185 @@
 import { useState } from 'react'
-import CompleteScreen from './components/CompleteScreen'
-import ExperimentScreen from './components/ExperimentScreen'
 import SetupScreen from './components/SetupScreen'
-import { DEFAULT_CONDITION_ID, getCondition } from './config/conditions'
+import StudyRunner from './components/StudyRunner'
 import {
-  ConditionConfig,
   InvalidEventRecord,
+  PracticeRecord,
   PrototypeConditionId,
-  ScheduledTrial,
+  StudySessionState,
   TrialRecord,
 } from './types/experiment'
-import { createBalancedSchedule } from './utils/schedule'
-import { createSessionId } from './utils/session'
-import { saveInvalidEvent, saveTrialRecord } from './utils/storage'
+import {
+  findIncompleteStudySession,
+  loadInvalidEvents,
+  loadPracticeRecords,
+  loadTrialRecords,
+  saveInvalidEvent,
+  savePracticeRecord,
+  saveStudySession,
+  saveTrialRecord,
+} from './utils/storage'
+import {
+  createStudySession,
+  reconcileStudySession,
+  validateStudyConfiguration,
+} from './utils/studySession'
 
-type Screen = 'setup' | 'experiment' | 'complete'
+interface PendingStart {
+  participantId: string
+  participantNumber: number | null
+  conditionId: PrototypeConditionId
+}
+
+const isPrototypeMode =
+  new URLSearchParams(window.location.search).get('mode') === 'prototype'
+
+if (import.meta.env.DEV && !validateStudyConfiguration()) {
+  throw new Error('Study sequence configuration validation failed.')
+}
 
 function App(): JSX.Element {
-  const [screen, setScreen] = useState<Screen>('setup')
-  const [sessionId, setSessionId] = useState('')
-  const [participantId, setParticipantId] = useState('')
-  const [condition, setCondition] = useState<ConditionConfig>(
-    getCondition(DEFAULT_CONDITION_ID),
+  const [session, setSession] = useState<StudySessionState | null>(null)
+  const [resumeSession, setResumeSession] = useState<StudySessionState | null>(null)
+  const [pendingStart, setPendingStart] = useState<PendingStart | null>(null)
+  const [records, setRecords] = useState<TrialRecord[]>(() => loadTrialRecords())
+  const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>(
+    () => loadPracticeRecords(),
   )
-  const [schedule, setSchedule] = useState<ScheduledTrial[]>([])
-  const [records, setRecords] = useState<TrialRecord[]>([])
-  const [invalidEvents, setInvalidEvents] = useState<InvalidEventRecord[]>([])
+  const [invalidEvents, setInvalidEvents] = useState<InvalidEventRecord[]>(
+    () => loadInvalidEvents(),
+  )
 
-  const startExperiment = (
-    nextParticipantId: string,
-    conditionId: PrototypeConditionId,
-  ): void => {
-    const selectedCondition = getCondition(conditionId)
-    setSessionId(createSessionId(conditionId))
-    setParticipantId(nextParticipantId)
-    setCondition(selectedCondition)
-    setSchedule(createBalancedSchedule(selectedCondition))
-    setRecords([])
-    setInvalidEvents([])
-    setScreen('experiment')
+  const activateSession = (nextSession: StudySessionState): void => {
+    saveStudySession(nextSession)
+    setSession(nextSession)
+    setResumeSession(null)
+    setPendingStart(null)
   }
 
-  const handleTrialRecorded = (record: TrialRecord): void => {
+  const startNewSession = (start: PendingStart): void => {
+    activateSession(
+      createStudySession(
+        start.participantId,
+        start.participantNumber,
+        isPrototypeMode,
+        start.conditionId,
+      ),
+    )
+  }
+
+  const handleSetupSubmit = (
+    participantId: string,
+    participantNumber: number | null,
+    conditionId: PrototypeConditionId,
+  ): void => {
+    const start = { participantId, participantNumber, conditionId }
+    const incomplete = findIncompleteStudySession(
+      participantId,
+      isPrototypeMode,
+    )
+    if (incomplete) {
+      setPendingStart(start)
+      setResumeSession(incomplete)
+      return
+    }
+    startNewSession(start)
+  }
+
+  const handleResume = (): void => {
+    if (!resumeSession) {
+      return
+    }
+    const reconciled = reconcileStudySession(
+      resumeSession,
+      records,
+      practiceRecords,
+    )
+    activateSession(reconciled)
+  }
+
+  const handleStartNew = (): void => {
+    if (pendingStart) {
+      startNewSession(pendingStart)
+    }
+  }
+
+  const updateSession = (nextSession: StudySessionState): void => {
+    saveStudySession(nextSession)
+    setSession(nextSession)
+  }
+
+  const touchSession = (): void => {
+    setSession((current) => {
+      if (!current) {
+        return current
+      }
+      const updated = { ...current, updatedAt: Date.now() }
+      saveStudySession(updated)
+      return updated
+    })
+  }
+
+  const handleFormalRecord = (record: TrialRecord): void => {
     saveTrialRecord(record)
     setRecords((current) => [...current, record])
+    touchSession()
+  }
+
+  const handlePracticeRecord = (record: PracticeRecord): void => {
+    savePracticeRecord(record)
+    setPracticeRecords((current) => [...current, record])
+    touchSession()
   }
 
   const handleInvalidEvent = (record: InvalidEventRecord): void => {
     saveInvalidEvent(record)
     setInvalidEvents((current) => [...current, record])
+    touchSession()
   }
 
-  const completeExperiment = (completedRecords: readonly TrialRecord[]): void => {
-    setRecords([...completedRecords])
-    setScreen('complete')
-  }
-
-  const restart = (): void => {
-    setSessionId('')
-    setParticipantId('')
-    setSchedule([])
-    setRecords([])
-    setInvalidEvents([])
-    setScreen('setup')
+  if (!session) {
+    return (
+      <>
+        <SetupScreen
+          isPrototype={isPrototypeMode}
+          resumeSession={resumeSession}
+          onSubmit={handleSetupSubmit}
+          onResume={handleResume}
+          onStartNew={handleStartNew}
+          onCancelResume={() => {
+            setResumeSession(null)
+            setPendingStart(null)
+          }}
+        />
+        <OrientationWarning />
+      </>
+    )
   }
 
   return (
     <>
-      {screen === 'setup' && <SetupScreen onStart={startExperiment} />}
-      {screen === 'experiment' && schedule.length > 0 && (
-        <ExperimentScreen
-          sessionId={sessionId}
-          participantId={participantId}
-          condition={condition}
-          schedule={schedule}
-          onTrialRecorded={handleTrialRecorded}
-          onInvalidEvent={handleInvalidEvent}
-          onComplete={completeExperiment}
-        />
-      )}
-      {screen === 'complete' && (
-        <CompleteScreen
-          sessionId={sessionId}
-          participantId={participantId}
-          condition={condition}
-          records={records}
-          invalidEvents={invalidEvents}
-          onRestart={restart}
-        />
-      )}
-      <aside className="orientation-warning" role="alert">
-        <strong>Portrait orientation required</strong>
-        <span>Please rotate your device to continue.</span>
-      </aside>
+      <StudyRunner
+        session={session}
+        records={records}
+        practiceRecords={practiceRecords}
+        invalidEvents={invalidEvents}
+        onSessionChange={updateSession}
+        onFormalRecord={handleFormalRecord}
+        onPracticeRecord={handlePracticeRecord}
+        onInvalidEvent={handleInvalidEvent}
+        onReturnToSetup={() => setSession(null)}
+      />
+      <OrientationWarning />
     </>
+  )
+}
+
+function OrientationWarning(): JSX.Element {
+  return (
+    <aside className="orientation-warning" role="alert">
+      <strong>Portrait orientation required</strong>
+      <span>Please rotate your device to continue.</span>
+    </aside>
   )
 }
 

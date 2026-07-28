@@ -7,7 +7,6 @@ import {
 } from 'react'
 import {
   CONDITIONS,
-  getTrialCount,
   MINIMUM_SAFE_STAGE_WIDTH,
   SAFETY_MARGIN,
 } from '../config/conditions'
@@ -15,7 +14,11 @@ import {
   ConditionConfig,
   InvalidEventRecord,
   InvalidEventType,
+  PracticeRecord,
   ScheduledTrial,
+  SessionSequenceCode,
+  TrialErrorType,
+  TrialPhase,
   TrialRecord,
 } from '../types/experiment'
 import {
@@ -29,13 +32,23 @@ import {
 } from '../utils/geometry'
 
 interface ExperimentScreenProps {
-  sessionId: string
+  studySessionId: string
+  blockSessionId: string
   participantId: string
+  sequenceCode: SessionSequenceCode
   condition: ConditionConfig
+  conditionOrderPosition: number
+  totalConditions: number
+  phase: TrialPhase
+  isPrototype: boolean
   schedule: readonly ScheduledTrial[]
-  onTrialRecorded: (record: TrialRecord) => void
+  initialTrialIndex: number
+  initialAttemptNumber: number
+  globalTrialOffset: number
+  onFormalTrialRecorded: (record: TrialRecord) => void
+  onPracticeAttemptRecorded: (record: PracticeRecord) => void
   onInvalidEvent: (record: InvalidEventRecord) => void
-  onComplete: (records: readonly TrialRecord[]) => void
+  onPhaseComplete: () => void
 }
 
 interface GestureState {
@@ -54,32 +67,42 @@ interface GestureState {
 type Feedback = 'correct' | 'wrong' | 'invalid-start' | 'pointer-cancel' | null
 
 const FEEDBACK_DURATION_MS = 500
+
 function ExperimentScreen({
-  sessionId,
+  studySessionId,
+  blockSessionId,
   participantId,
+  sequenceCode,
   condition,
+  conditionOrderPosition,
+  totalConditions,
+  phase,
+  isPrototype,
   schedule,
-  onTrialRecorded,
+  initialTrialIndex,
+  initialAttemptNumber,
+  globalTrialOffset,
+  onFormalTrialRecorded,
+  onPracticeAttemptRecorded,
   onInvalidEvent,
-  onComplete,
+  onPhaseComplete,
 }: ExperimentScreenProps): JSX.Element {
   const arenaRef = useRef<HTMLDivElement>(null)
   const gestureRef = useRef<GestureState | null>(null)
   const submittedRef = useRef(false)
   const cueTimeRef = useRef(performance.now())
-  const recordsRef = useRef<TrialRecord[]>([])
   const timeoutRef = useRef<number | null>(null)
   const mountedRef = useRef(true)
   const cancelGestureRef = useRef<((point: Point) => void) | null>(null)
   const arenaSizeRef = useRef({ width: 0, height: 0 })
-  const [trialIndex, setTrialIndex] = useState(0)
+  const [trialIndex, setTrialIndex] = useState(initialTrialIndex)
+  const [attemptNumber, setAttemptNumber] = useState(initialAttemptNumber)
   const [arenaSize, setArenaSize] = useState({ width: 0, height: 0 })
   const [menuVisible, setMenuVisible] = useState(false)
   const [feedback, setFeedback] = useState<Feedback>(null)
 
   const currentTrial = schedule[trialIndex]
   const target = condition.targets.find((item) => item.id === currentTrial.targetId)
-  const trialCount = getTrialCount(condition)
 
   if (!target) {
     throw new Error(`Unknown target: ${currentTrial.targetId}`)
@@ -139,7 +162,8 @@ function ExperimentScreen({
       const previousSize = arenaSizeRef.current
       const sizeChanged =
         previousSize.width > 0 &&
-        (previousSize.width !== nextSize.width || previousSize.height !== nextSize.height)
+        (previousSize.width !== nextSize.width ||
+          previousSize.height !== nextSize.height)
 
       if (sizeChanged && gestureRef.current) {
         cancelGestureRef.current?.(gestureRef.current.lastPoint)
@@ -207,9 +231,14 @@ function ExperimentScreen({
     eventType: InvalidEventType,
     point: Point,
   ): InvalidEventRecord => ({
-    sessionId,
+    studySessionId,
+    blockSessionId,
     participantId,
+    sequenceCode,
     conditionId: condition.conditionId,
+    conditionOrderPosition,
+    phase,
+    isPrototype,
     trialNumber: trialIndex + 1,
     targetId: currentTrial.targetId,
     eventType,
@@ -305,33 +334,27 @@ function ExperimentScreen({
     gesture.lastPoint = point
   }
 
-  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    const gesture = gestureRef.current
-    if (!gesture || gesture.pointerId !== event.pointerId || submittedRef.current) {
-      return
-    }
-
-    submittedRef.current = true
-    event.preventDefault()
-    const touchUp = pointFromEvent(event)
-    gesture.pathLength += distance(gesture.lastPoint, touchUp)
-    const touchUpTime = performance.now()
+  const finishAttempt = (
+    gesture: GestureState,
+    touchUp: Point,
+    touchUpTime: number,
+  ): void => {
     const selectedId = getSelectedItem(touchUp, menuItems, condition.targetRadius)
     const correct = selectedId === currentTrial.targetId
-    const errorType = selectedId === null ? 'miss' : correct ? 'none' : 'wrong-item'
-    const record: TrialRecord = {
-      sessionId,
+    const errorType: TrialErrorType =
+      selectedId === null ? 'miss' : correct ? 'none' : 'wrong-item'
+    const common = {
+      studySessionId,
+      blockSessionId,
       participantId,
+      sequenceCode,
       conditionId: condition.conditionId,
-      touchLocation: condition.touchLocation,
-      menuLayout: condition.menuLayout,
-      trialNumber: trialIndex + 1,
+      conditionOrderPosition,
+      isPrototype,
       targetId: currentTrial.targetId,
       selectedId,
-      valid: true,
       correct,
       errorType,
-      cueTime: cueTimeRef.current,
       touchDownTime: gesture.touchDownTime,
       touchUpTime,
       selectionTime: touchUpTime - gesture.touchDownTime,
@@ -354,6 +377,54 @@ function ExperimentScreen({
       userAgent: navigator.userAgent,
     }
 
+    if (phase === 'Formal') {
+      onFormalTrialRecorded({
+        ...common,
+        phase: 'Formal',
+        touchLocation: condition.touchLocation,
+        menuLayout: condition.menuLayout,
+        trialNumber: trialIndex + 1,
+        globalTrialNumber: globalTrialOffset + trialIndex + 1,
+        valid: true,
+        cueTime: cueTimeRef.current,
+      })
+    } else {
+      onPracticeAttemptRecorded({
+        ...common,
+        phase: 'Practice',
+        practiceTargetNumber: trialIndex + 1,
+        attemptNumber,
+      })
+    }
+
+    setFeedback(correct ? 'correct' : 'wrong')
+    scheduleFeedbackReset(() => {
+      const shouldAdvance = phase === 'Formal' || correct
+      if (!shouldAdvance) {
+        setAttemptNumber((current) => current + 1)
+        return
+      }
+      if (trialIndex + 1 >= schedule.length) {
+        onPhaseComplete()
+        return
+      }
+      setTrialIndex((current) => current + 1)
+      setAttemptNumber(1)
+    })
+  }
+
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const gesture = gestureRef.current
+    if (!gesture || gesture.pointerId !== event.pointerId || submittedRef.current) {
+      return
+    }
+
+    submittedRef.current = true
+    event.preventDefault()
+    const touchUp = pointFromEvent(event)
+    gesture.pathLength += distance(gesture.lastPoint, touchUp)
+    const touchUpTime = performance.now()
+
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       try {
         event.currentTarget.releasePointerCapture(event.pointerId)
@@ -363,20 +434,7 @@ function ExperimentScreen({
     }
     gestureRef.current = null
     setMenuVisible(false)
-    setFeedback(correct ? 'correct' : 'wrong')
-    recordsRef.current = [...recordsRef.current, record]
-    onTrialRecorded(record)
-
-    scheduleFeedbackReset(() => {
-      if (
-        recordsRef.current.length === trialCount &&
-        schedule.length === trialCount
-      ) {
-        onComplete(recordsRef.current)
-        return
-      }
-      setTrialIndex((current) => current + 1)
-    })
+    finishAttempt(gesture, touchUp, touchUpTime)
   }
 
   const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -385,33 +443,36 @@ function ExperimentScreen({
       return
     }
 
-    const point = pointFromEvent(event)
-    cancelActiveGesture(point)
+    cancelActiveGesture(pointFromEvent(event))
   }
 
   const feedbackText =
     feedback === 'correct'
       ? 'Correct'
       : feedback === 'wrong'
-      ? 'Next trial'
+      ? phase === 'Practice'
+        ? 'Try the same target again'
+        : 'Next trial'
       : feedback === 'invalid-start'
       ? 'Start inside the centre point'
       : feedback === 'pointer-cancel'
       ? 'Gesture interrupted — try again'
       : ''
+  const phaseLabel = phase === 'Formal' ? 'Formal trials' : 'Practice'
+  const visibleConditionLabel = isPrototype
+    ? `${condition.conditionId} · ${condition.touchLocation} · ${condition.menuLayout}`
+    : `Block ${conditionOrderPosition} of ${totalConditions}`
 
   return (
     <main className="experiment-screen">
       <header className="experiment-header">
         <div>
-          <span>Participant</span>
+          <span>{phaseLabel}</span>
           <strong>{participantId}</strong>
         </div>
-        <div className="condition-name">
-          {condition.conditionId} · {condition.touchLocation} · {condition.menuLayout}
-        </div>
+        <div className="condition-name">{visibleConditionLabel}</div>
         <div className="progress">
-          <span>Progress</span>
+          <span>{phaseLabel}</span>
           <strong>
             {trialIndex + 1}/{schedule.length}
           </strong>
@@ -479,7 +540,7 @@ function ExperimentScreen({
 
         {!geometryReady && arenaSize.width > 0 && (
           <div className="device-size-warning" role="alert">
-            <strong>Device width is not suitable for this condition</strong>
+            <strong>Device width is not suitable for this experiment</strong>
             <span>
               The experiment stage must be at least {MINIMUM_SAFE_STAGE_WIDTH} CSS px
               wide and tall enough to show every target with a {SAFETY_MARGIN}px

@@ -1,66 +1,71 @@
-import { INVALID_EVENT_COLUMNS, TRIAL_RECORD_COLUMNS } from '../utils/csvColumns'
+import {
+  INVALID_EVENT_COLUMNS,
+  PRACTICE_RECORD_COLUMNS,
+  TRIAL_RECORD_COLUMNS,
+} from '../utils/csvColumns'
 import { downloadCsv, recordsToCsv } from '../utils/exportCsv'
 import {
-  ConditionConfig,
   InvalidEventRecord,
+  PracticeRecord,
+  StudySessionState,
   TrialRecord,
 } from '../types/experiment'
-import { getTrialCount } from '../config/conditions'
+import { getCondition } from '../config/conditions'
+import { validateFormalRecords } from '../utils/studySession'
 
 interface CompleteScreenProps {
-  sessionId: string
-  participantId: string
-  condition: ConditionConfig
+  session: StudySessionState
   records: readonly TrialRecord[]
   invalidEvents: readonly InvalidEventRecord[]
-  onRestart: () => void
+  practiceRecords: readonly PracticeRecord[]
+  onReturnToSetup: () => void
 }
 
 const safeFilenamePart = (value: string): string =>
   value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)
 
 function CompleteScreen({
-  sessionId,
-  participantId,
-  condition,
+  session,
   records,
   invalidEvents,
-  onRestart,
+  practiceRecords,
+  onReturnToSetup,
 }: CompleteScreenProps): JSX.Element {
-  const sessionRecords = records.filter(
-    (record) =>
-      record.sessionId === sessionId &&
-      record.conditionId === condition.conditionId,
-  )
+  const integrity = validateFormalRecords(session, records)
   const sessionInvalidEvents = invalidEvents.filter(
-    (record) =>
-      record.sessionId === sessionId &&
-      record.conditionId === condition.conditionId,
+    (record) => record.studySessionId === session.studySessionId,
   )
-  const correctCount = sessionRecords.filter((record) => record.correct).length
-  const averageSelectionTime =
-    sessionRecords.length > 0
-      ? sessionRecords.reduce((total, record) => total + record.selectionTime, 0) /
-        sessionRecords.length
-      : 0
-  const filenameId = safeFilenamePart(participantId)
-  const filenameSessionId = safeFilenamePart(sessionId)
-  const trialCount = getTrialCount(condition)
+  const sessionPracticeRecords = practiceRecords.filter(
+    (record) => record.studySessionId === session.studySessionId,
+  )
+  const filenameId = safeFilenamePart(session.participantId)
+  const filenameSessionId = safeFilenamePart(session.studySessionId)
+  const expectedTrials = session.isPrototype ? 25 : 150
+  const prototypeCondition = session.isPrototype
+    ? getCondition(session.conditionOrder[0])
+    : null
 
   const downloadTrials = (): void => {
-    if (sessionRecords.length !== trialCount) {
+    if (!integrity.valid) {
       return
     }
     downloadCsv(
-      `${filenameId}-${filenameSessionId}-${condition.conditionId}-trials.csv`,
-      recordsToCsv(sessionRecords, TRIAL_RECORD_COLUMNS),
+      `${filenameId}-${filenameSessionId}-all-formal-trials.csv`,
+      recordsToCsv(integrity.records, TRIAL_RECORD_COLUMNS),
     )
   }
 
   const downloadInvalidEvents = (): void => {
     downloadCsv(
-      `${filenameId}-${filenameSessionId}-${condition.conditionId}-invalid-events.csv`,
+      `${filenameId}-${filenameSessionId}-invalid-events.csv`,
       recordsToCsv(sessionInvalidEvents, INVALID_EVENT_COLUMNS),
+    )
+  }
+
+  const downloadPractice = (): void => {
+    downloadCsv(
+      `${filenameId}-${filenameSessionId}-practice-attempts.csv`,
+      recordsToCsv(sessionPracticeRecords, PRACTICE_RECORD_COLUMNS),
     )
   }
 
@@ -70,37 +75,62 @@ function CompleteScreen({
         <p className="completion-mark" aria-hidden="true">
           ✓
         </p>
-        <p className="eyebrow">{condition.label}</p>
-        <h1>{trialCount} trials complete</h1>
+        <p className="eyebrow">
+          {session.isPrototype
+            ? `Prototype complete · ${prototypeCondition?.label ?? ''}`
+            : 'Experiment complete'}
+        </p>
+        <h1>{integrity.valid ? `${expectedTrials} formal trials recorded` : 'Data check required'}</h1>
+        <p className="intro">
+          {session.isPrototype
+            ? 'The selected prototype condition is complete.'
+            : 'All six blocks are complete. Please follow the researcher’s instructions to complete the external questionnaire.'}
+        </p>
         <dl className="results">
           <div>
-            <dt>Correct</dt>
-            <dd>
-              {correctCount}/{sessionRecords.length}
-            </dd>
+            <dt>Study session ID</dt>
+            <dd className="session-id">{session.studySessionId}</dd>
           </div>
           <div>
-            <dt>Average selection time</dt>
-            <dd>{averageSelectionTime.toFixed(1)} ms</dd>
+            <dt>Progress</dt>
+            <dd>{session.conditionOrder.length} blocks completed</dd>
           </div>
         </dl>
+
+        {!integrity.valid && (
+          <div className="integrity-error" role="alert">
+            <strong>Formal data is incomplete and cannot be exported.</strong>
+            {session.isPrototype && (
+              <ul>
+                {integrity.errors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="button-stack">
           <button
             className="primary-button"
             type="button"
             onClick={downloadTrials}
-            disabled={sessionRecords.length !== trialCount}
+            disabled={!integrity.valid}
           >
-            Download trial CSV
+            Download all formal data
           </button>
           {sessionInvalidEvents.length > 0 && (
             <button className="secondary-button" type="button" onClick={downloadInvalidEvents}>
-              Download invalid-event CSV ({sessionInvalidEvents.length})
+              Download invalid events ({sessionInvalidEvents.length})
             </button>
           )}
-          <button className="text-button" type="button" onClick={onRestart}>
-            Return to start
+          {sessionPracticeRecords.length > 0 && (
+            <button className="secondary-button" type="button" onClick={downloadPractice}>
+              Download practice data
+            </button>
+          )}
+          <button className="text-button" type="button" onClick={onReturnToSetup}>
+            Return to setup
           </button>
         </div>
       </section>

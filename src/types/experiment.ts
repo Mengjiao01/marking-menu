@@ -12,6 +12,20 @@ export type TrialErrorType = 'none' | 'wrong-item' | 'miss'
 
 export type InvalidEventType = 'invalid-start' | 'pointer-cancel'
 
+export type SequenceCode = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
+
+export type SessionSequenceCode = SequenceCode | 'Prototype'
+
+export type TrialPhase = 'Practice' | 'Formal'
+
+export type StudyPhase =
+  | 'condition-intro'
+  | 'practice'
+  | 'practice-complete'
+  | 'formal'
+  | 'break'
+  | 'complete'
+
 export interface MenuItem {
   id: TargetId
   label: string
@@ -36,9 +50,15 @@ export interface ScheduledTrial {
 }
 
 export interface TrialRecord {
-  sessionId: string
+  studySessionId: string
+  blockSessionId: string
   participantId: string
+  sequenceCode: SessionSequenceCode
   conditionId: ConditionId
+  conditionOrderPosition: number
+  globalTrialNumber: number
+  phase: 'Formal'
+  isPrototype: boolean
   touchLocation: TouchLocation
   menuLayout: MenuLayout
   trialNumber: number
@@ -68,9 +88,14 @@ export interface TrialRecord {
 }
 
 export interface InvalidEventRecord {
-  sessionId: string
+  studySessionId: string
+  blockSessionId: string
   participantId: string
+  sequenceCode: SessionSequenceCode
   conditionId: ConditionId
+  conditionOrderPosition: number
+  phase: TrialPhase
+  isPrototype: boolean
   trialNumber: number
   targetId: TargetId
   eventType: InvalidEventType
@@ -85,4 +110,54 @@ export interface InvalidEventRecord {
   viewportHeight: number
   devicePixelRatio: number
   userAgent: string
+}
+
+export interface PracticeRecord {
+  studySessionId: string
+  blockSessionId: string
+  participantId: string
+  sequenceCode: SessionSequenceCode
+  conditionId: ConditionId
+  conditionOrderPosition: number
+  phase: 'Practice'
+  isPrototype: boolean
+  practiceTargetNumber: number
+  attemptNumber: number
+  targetId: TargetId
+  selectedId: TargetId | null
+  correct: boolean
+  errorType: TrialErrorType
+  touchDownTime: number
+  touchUpTime: number
+  selectionTime: number
+  touchDownX: number
+  touchDownY: number
+  touchUpX: number
+  touchUpY: number
+  pathLength: number
+  stageWidth: number
+  stageHeight: number
+  activationCenterX: number
+  activationCenterY: number
+  nearestEdgeDistance: number
+  viewportWidth: number
+  viewportHeight: number
+  devicePixelRatio: number
+  userAgent: string
+}
+
+export interface StudySessionState {
+  version: 1
+  studySessionId: string
+  participantId: string
+  sequenceCode: SessionSequenceCode
+  conditionOrder: PrototypeConditionId[]
+  conditionOrderIndex: number
+  phase: StudyPhase
+  isPrototype: boolean
+  createdAt: number
+  updatedAt: number
+  practiceSchedules: Partial<Record<PrototypeConditionId, ScheduledTrial[]>>
+  formalSchedules: Partial<Record<PrototypeConditionId, ScheduledTrial[]>>
+  blockSessionIds: Partial<Record<PrototypeConditionId, string>>
 }

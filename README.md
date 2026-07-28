@@ -1,7 +1,7 @@
 # Marking Menu Experiment
 
-Mobile web experiment for a master's research project. The current prototype
-implements the complete 3 × 2 condition set:
+Mobile web experiment for a master's research project. The application implements
+all six conditions in a within-participant 3 × 2 design:
 
 - C1 Centre–Traditional
 - C2 Left–Traditional
@@ -10,30 +10,103 @@ implements the complete 3 × 2 condition set:
 - C5 Right–Adaptive
 - C6 Centre–Adaptive
 
-## Current experiment flow
+## Formal flow
 
-1. Enter a non-empty participant ID and select a prototype condition. C1 is the
-   default. This selector is a development/testing entry; formal condition order
-   will be assigned automatically in a later phase.
-2. Complete 25 randomly shuffled trials (five targets repeated five times).
-3. Begin each gesture inside the configured activation point, drag to an item, and
-   release. Incorrect selections and misses still advance the trial.
-4. Review accuracy and average selection time, then download the formal-trial CSV.
-   A separate invalid-event CSV is available when invalid starts or pointer
-   cancellations occurred.
+The normal URL runs the complete study:
 
-Every start creates a condition-prefixed unique session ID. Formal trials and
-invalid events are appended to the unified browser `localStorage` keys
-`marking-menu:trial-records` and `marking-menu:invalid-events`. Downloads are
-filtered to the current session and condition only. Legacy C1-specific storage
-keys are left untouched and are not mixed into new sessions.
+```text
+Setup
+→ Condition introduction and static layout preview
+→ Five practice targets
+→ Practice complete
+→ 25 formal trials
+→ Break
+→ Next condition
+→ Experiment complete
+```
 
-The app does not collect names, email addresses, or contact details and does not
-transmit data to a server.
+Each participant completes six conditions, 30 practice targets, and 150 formal
+trials. Practice errors repeat the same target until it is selected correctly.
+Formal correct selections, wrong items, and misses all advance exactly once.
+
+Participant IDs must match `P` followed by at least three digits, such as `P001`.
+Input is case-insensitive and stored in uppercase. The numeric part assigns one of
+six balanced condition sequences:
+
+```text
+A: C1 C2 C6 C3 C5 C4
+B: C2 C3 C1 C4 C6 C5
+C: C3 C4 C2 C5 C1 C6
+D: C4 C5 C3 C6 C2 C1
+E: C5 C6 C4 C1 C3 C2
+F: C6 C1 C5 C2 C4 C3
+```
+
+The assignment is `(participantNumber - 1) % 6`, so P001–P006 receive A–F
+respectively and P007 returns to A.
+
+## Prototype mode
+
+Development-only single-condition testing is enabled exclusively through:
+
+```text
+?mode=prototype
+```
+
+Prototype mode displays the condition selector, accepts a non-empty test ID, runs
+one condition, and stores `isPrototype=true`. The normal page has no control that
+can enable prototype mode.
+
+## Resume behavior
+
+Study session state is saved after every phase transition and record. When the
+same participant ID has an unfinished session, setup offers:
+
+- Resume session
+- Start new session
+
+Schedules and block IDs are fixed when a study starts. Resume derives the next
+practice target or formal trial from records already persisted for the current
+`studySessionId` and `blockSessionId`; it does not restore an in-progress pointer
+gesture. A crash after a record write therefore cannot cause that completed trial
+to be submitted again. Starting new creates another study session and preserves
+the old history.
+
+## Local storage
+
+The browser stores append-only histories and resumable session snapshots under:
+
+```text
+marking-menu:trial-records
+marking-menu:practice-records
+marking-menu:invalid-events
+marking-menu:study-sessions
+```
+
+Legacy or malformed entries are excluded from current exports. Formal export is
+filtered by the active study session and `isPrototype`, then validated before the
+download button is enabled.
+
+## Data integrity
+
+A normal formal export must contain:
+
+- Exactly 150 rows
+- Exactly 25 rows for every condition
+- Exactly 5 rows for every target in every condition
+- `globalTrialNumber` equal to 1–150 without gaps
+- Correct `conditionOrderPosition`
+- No prototype or other study-session rows
+
+Formal records include `studySessionId`, `blockSessionId`, `sequenceCode`,
+condition and trial numbering, outcome/timing/trajectory fields, actual stage and
+activation geometry, and device context. Practice attempts use a separate schema
+with `practiceTargetNumber` and `attemptNumber`. Invalid events include their
+Practice/Formal phase.
 
 ## Geometry
 
-Shared geometry has one configuration source:
+All conditions share:
 
 - Menu radius: 72 CSS px
 - Target radius: 24 CSS px
@@ -47,81 +120,29 @@ Activation centres depend only on touch location:
 - Left: `(100, stageHeight × 0.6)`
 - Right: `(stageWidth - 100, stageHeight × 0.6)`
 
-The minimum stage width for all five targets and the 4px margin is 200 CSS px.
-After every stage resize, the app checks every target without moving it. If the
-stage is too small, formal interaction is blocked and a device-size message is
-shown.
+Every resize checks all targets in all six conditions. An unsuitable stage blocks
+interaction rather than changing a target, radius, or angle.
 
-Menu angles are configured separately from touch location:
+## Windows development
 
-- Traditional: T1 36°, T2 108°, T3 180°, T4 252°, T5 324°
-- Left–Adaptive: T1 270°, T2 315°, T3 0°, T4 45°, T5 90°
-- Right–Adaptive: T1 90°, T2 135°, T3 180°, T4 225°, T5 270°
-- Centre–Adaptive intentionally uses the same angles as Traditional while
-  remaining a distinct Adaptive condition.
+Requirements:
 
-## CSV data dictionary
-
-Formal trial CSV fields:
-
-- Session and condition: `sessionId`, `participantId`, `conditionId`,
-  `touchLocation`, `menuLayout`
-- Trial result: `trialNumber`, `targetId`, `selectedId`, `valid`, `correct`,
-  `errorType`
-- Timing: `cueTime`, `touchDownTime`, `touchUpTime`, `selectionTime`
-- Gesture: `touchDownX`, `touchDownY`, `touchUpX`, `touchUpY`, `pathLength`
-- Actual geometry: `stageWidth`, `stageHeight`, `activationCenterX`,
-  `activationCenterY`, `nearestEdgeDistance`
-- Device context: `viewportWidth`, `viewportHeight`, `devicePixelRatio`,
-  `userAgent`
-
-Invalid-event CSV fields include `sessionId`, participant and condition IDs,
-trial/target/event details, pointer coordinates, `stageWidth`, `stageHeight`,
-`activationCenterX`, `activationCenterY`, and the same device context fields.
-Legacy records can remain in localStorage without the new geometry fields; they
-are never mixed into a new session export.
-
-## Requirements
-
-- Windows 10
-- PowerShell
+- Windows 10 and PowerShell
 - Node.js 14.16.0
 - npm 6.14.11
-- For data collection: iPhone Safari in portrait orientation
 
-A desktop mouse can be used for development testing.
-
-## Windows setup and commands
-
-From this project directory in PowerShell:
+Commands:
 
 ```powershell
 npm install --no-audit --no-fund
-npm run dev
-```
-
-For testing from another device on the same network:
-
-```powershell
+npm run lint
+npm run build
 npm run dev -- --host 0.0.0.0
 ```
 
-Quality checks and production build:
+Use iPhone Safari in portrait orientation for data collection. A desktop mouse can
+be used for development testing.
 
-```powershell
-npm run lint
-npm run build
-npm run preview
-```
-
-## Current scope
-
-- React 17, TypeScript, Vite 2, and native CSS
-- All six condition parameters have one source in `src/config/conditions.ts`
-- Shared experiment types live in `src/types/experiment.ts`
-- CSV export is performed locally in the browser
-- No automatic condition order, practice trials, questionnaire, server,
-  database, authentication, analysis, or device-model detection
-
-The development build logs a console warning if any configured target falls
-outside the current experiment stage. It never moves targets or changes geometry.
+The application does not include a server, questionnaire, user login, statistical
+analysis, condition randomization beyond the defined sequences, or device-model
+detection.
