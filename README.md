@@ -16,6 +16,7 @@ The normal URL runs the complete study:
 
 ```text
 Setup
+→ Study instructions
 → Condition introduction and static layout preview
 → Five practice targets
 → Practice complete
@@ -53,9 +54,11 @@ Development-only single-condition testing is enabled exclusively through:
 ?mode=prototype
 ```
 
-Prototype mode displays the condition selector, accepts a non-empty test ID, runs
-one condition, and stores `isPrototype=true`. The normal page has no control that
-can enable prototype mode.
+Prototype mode displays the condition selector, accepts a non-empty test ID, then
+shows Study Instructions once before the selected condition introduction. It runs
+one condition and stores `isPrototype=true`. The instructions screen retains a
+clear Prototype label. The normal page has no control that can enable prototype
+mode.
 
 ## Resume behavior
 
@@ -65,12 +68,19 @@ same participant ID has an unfinished session, setup offers:
 - Resume session
 - Start new session
 
+`instructions` is a persisted study-session phase. Every newly created formal or
+prototype session starts there. Selecting **Start Experiment** saves the phase as
+`condition-intro` before showing the first condition. Resuming a session still in
+`instructions` returns to that page; sessions already at condition introduction,
+Practice, Formal, Break, or another later phase resume there without showing the
+instructions again. Starting new creates a new session and shows the instructions
+again.
+
 Schedules and block IDs are fixed when a study starts. Resume derives the next
 practice target or formal trial from records already persisted for the current
 `studySessionId` and `blockSessionId`; it does not restore an in-progress pointer
 gesture. A crash after a record write therefore cannot cause that completed trial
-to be submitted again. Starting new creates another study session and preserves
-the old history.
+to be submitted again. Starting new preserves the old history.
 
 ## Local storage
 

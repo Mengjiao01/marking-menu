@@ -19,6 +19,7 @@ export type SessionSequenceCode = SequenceCode | 'Prototype'
 export type TrialPhase = 'Practice' | 'Formal'
 
 export type StudyPhase =
+  | 'instructions'
   | 'condition-intro'
   | 'practice'
   | 'practice-complete'

@@ -66,7 +66,7 @@ export function createStudySession(
     configVersion: EXPERIMENT_CONFIG_VERSION,
     conditionOrder,
     conditionOrderIndex: 0,
-    phase: 'condition-intro',
+    phase: 'instructions',
     isPrototype,
     createdAt: now,
     updatedAt: now,

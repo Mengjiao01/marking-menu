@@ -74,6 +74,7 @@ function isStudySessionState(value: Record<string, unknown>): value is Record<
 > {
   const conditionIds = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6']
   const phases = [
+    'instructions',
     'condition-intro',
     'practice',
     'practice-complete',

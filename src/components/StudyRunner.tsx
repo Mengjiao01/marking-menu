@@ -16,6 +16,7 @@ import BreakScreen from './BreakScreen'
 import CompleteScreen from './CompleteScreen'
 import ConditionIntroScreen from './ConditionIntroScreen'
 import ExperimentScreen from './ExperimentScreen'
+import InstructionsScreen from './InstructionsScreen'
 import PracticeCompleteScreen from './PracticeCompleteScreen'
 
 interface StudyRunnerProps {
@@ -79,6 +80,13 @@ function StudyRunner({
   }
 
   switch (session.phase) {
+    case 'instructions':
+      return (
+        <InstructionsScreen
+          isPrototype={session.isPrototype}
+          onStart={() => setPhase('condition-intro')}
+        />
+      )
     case 'condition-intro':
       return (
         <ConditionIntroScreen
