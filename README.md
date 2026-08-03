@@ -213,6 +213,26 @@ npm run dev -- --host 0.0.0.0
 Use iPhone Safari in portrait orientation for data collection. A desktop mouse can
 be used for development testing.
 
+## Deployment
+
+The application is deployed with GitHub Pages at:
+
+```text
+https://Mengjiao01.github.io/marking-menu/
+```
+
+Every push to the default `main` branch triggers the GitHub Actions deployment
+workflow. GitHub Actions uses Node.js 20 to install the locked dependencies, build
+the application, and publish the generated `dist` directory. Local development
+continues to use Node.js 14.16.0; the cloud build does not change the local Node.js
+requirement.
+
+Production study data remains only in each participant's browser `localStorage`.
+Resume requires the same device, the same browser, and the same production URL.
+Clearing the browser's site data deletes the locally stored recovery data. The
+deployment does not upload CSV files or participant data to GitHub; participants
+must still download and submit CSV files using the agreed private method.
+
 The application does not include a server, database, network upload, user login,
 statistical analysis, condition randomization
 beyond the defined sequences, or device-model detection.
