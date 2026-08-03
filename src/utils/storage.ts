@@ -1,15 +1,18 @@
 import {
+  ConditionRatingRecord,
   InvalidEventRecord,
   PracticeRecord,
   StudySessionState,
   TrialRecord,
 } from '../types/experiment'
+import { EXPERIMENT_CONFIG_VERSION } from '../config/conditions'
 
 export const STORAGE_KEYS = {
   trialRecords: 'marking-menu:trial-records',
   invalidEvents: 'marking-menu:invalid-events',
   practiceRecords: 'marking-menu:practice-records',
   studySessions: 'marking-menu:study-sessions',
+  conditionRatings: 'marking-menu:condition-ratings',
 } as const
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -68,6 +71,60 @@ export function savePracticeRecord(record: PracticeRecord): void {
   appendRecord(STORAGE_KEYS.practiceRecords, record)
 }
 
+const isRating = (value: unknown): value is ConditionRatingRecord['easeOfUse'] =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 6
+
+function isConditionRatingRecord(
+  value: Record<string, unknown>,
+): value is Record<keyof ConditionRatingRecord, unknown> {
+  const conditionIds = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6']
+  const sequenceCodes = ['A', 'B', 'C', 'D', 'E', 'F', 'Prototype']
+  return (
+    typeof value.participantId === 'string' &&
+    typeof value.studySessionId === 'string' &&
+    typeof value.conditionId === 'string' &&
+    conditionIds.includes(value.conditionId) &&
+    typeof value.conditionOrderPosition === 'number' &&
+    Number.isInteger(value.conditionOrderPosition) &&
+    value.conditionOrderPosition >= 1 &&
+    value.conditionOrderPosition <= 6 &&
+    typeof value.sequenceCode === 'string' &&
+    sequenceCodes.includes(value.sequenceCode) &&
+    isRating(value.easeOfUse) &&
+    isRating(value.comfort) &&
+    isRating(value.targetVisibility) &&
+    isRating(value.practicality) &&
+    isRating(value.intentionToUse) &&
+    typeof value.configVersion === 'string' &&
+    typeof value.isPrototype === 'boolean'
+  )
+}
+
+export function loadConditionRatings(): ConditionRatingRecord[] {
+  return loadObjects(STORAGE_KEYS.conditionRatings)
+    .filter(isConditionRatingRecord)
+    .map((record) => record as unknown as ConditionRatingRecord)
+}
+
+export function saveConditionRating(record: ConditionRatingRecord): boolean {
+  if (!isConditionRatingRecord(record as unknown as Record<string, unknown>)) {
+    return false
+  }
+  const records = loadConditionRatings()
+  if (
+    records.some(
+      (candidate) =>
+        candidate.studySessionId === record.studySessionId &&
+        candidate.conditionId === record.conditionId,
+    )
+  ) {
+    return true
+  }
+  records.push(record)
+  saveArray(STORAGE_KEYS.conditionRatings, records)
+  return true
+}
+
 function isStudySessionState(value: Record<string, unknown>): value is Record<
   keyof StudySessionState,
   unknown
@@ -79,6 +136,7 @@ function isStudySessionState(value: Record<string, unknown>): value is Record<
     'practice',
     'practice-complete',
     'formal',
+    'condition-rating',
     'break',
     'complete',
   ]
@@ -142,6 +200,7 @@ export function findIncompleteStudySession(
       (session) =>
         session.participantId === participantId &&
         session.isPrototype === isPrototype &&
+        session.configVersion === EXPERIMENT_CONFIG_VERSION &&
         session.phase !== 'complete',
     )
     .sort((first, second) => second.updatedAt - first.updatedAt)

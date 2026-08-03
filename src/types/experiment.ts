@@ -24,6 +24,7 @@ export type StudyPhase =
   | 'practice'
   | 'practice-complete'
   | 'formal'
+  | 'condition-rating'
   | 'break'
   | 'complete'
 
@@ -158,6 +159,23 @@ export interface PracticeRecord {
   viewportHeight: number
   devicePixelRatio: number
   userAgent: string
+}
+
+export type LikertRating = 1 | 2 | 3 | 4 | 5 | 6
+
+export interface ConditionRatingRecord {
+  participantId: string
+  studySessionId: string
+  conditionId: ConditionId
+  conditionOrderPosition: number
+  sequenceCode: SessionSequenceCode
+  easeOfUse: LikertRating
+  comfort: LikertRating
+  targetVisibility: LikertRating
+  practicality: LikertRating
+  intentionToUse: LikertRating
+  configVersion: string
+  isPrototype: boolean
 }
 
 export interface StudySessionState {

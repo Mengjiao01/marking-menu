@@ -41,8 +41,9 @@ function InstructionsScreen({
           Do not lift your thumb during the movement.
         </p>
         <p className="instruction-note">
-          You will complete a short practice before each formal block. You may take
-          a break between blocks.
+          You will complete a short practice before each formal block. After each
+          formal block, you will answer five short rating questions. You may take a
+          break between blocks.
         </p>
         <p className="resume-note">
           If the page is closed or refreshed, enter the same Participant ID to

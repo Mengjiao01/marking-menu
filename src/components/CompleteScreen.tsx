@@ -1,23 +1,27 @@
 import {
+  CONDITION_RATING_COLUMNS,
   INVALID_EVENT_COLUMNS,
   PRACTICE_RECORD_COLUMNS,
   TRIAL_RECORD_COLUMNS,
 } from '../utils/csvColumns'
 import { downloadCsv, recordsToCsv } from '../utils/exportCsv'
 import {
+  ConditionRatingRecord,
   InvalidEventRecord,
   PracticeRecord,
   StudySessionState,
   TrialRecord,
 } from '../types/experiment'
 import { getCondition } from '../config/conditions'
-import { validateFormalRecords } from '../utils/studySession'
+import { QUESTIONNAIRE_URL } from '../config/questionnaire'
+import { validateConditionRatings, validateFormalRecords } from '../utils/studySession'
 
 interface CompleteScreenProps {
   session: StudySessionState
   records: readonly TrialRecord[]
   invalidEvents: readonly InvalidEventRecord[]
   practiceRecords: readonly PracticeRecord[]
+  ratings: readonly ConditionRatingRecord[]
   onReturnToSetup: () => void
 }
 
@@ -29,9 +33,11 @@ function CompleteScreen({
   records,
   invalidEvents,
   practiceRecords,
+  ratings,
   onReturnToSetup,
 }: CompleteScreenProps): JSX.Element {
   const integrity = validateFormalRecords(session, records)
+  const ratingIntegrity = validateConditionRatings(session, ratings)
   const sessionInvalidEvents = invalidEvents.filter(
     (record) => record.studySessionId === session.studySessionId,
   )
@@ -44,6 +50,7 @@ function CompleteScreen({
   const prototypeCondition = session.isPrototype
     ? getCondition(session.conditionOrder[0])
     : null
+  const questionnaireAvailable = QUESTIONNAIRE_URL.trim().length > 0
 
   const downloadTrials = (): void => {
     if (!integrity.valid) {
@@ -69,6 +76,19 @@ function CompleteScreen({
     )
   }
 
+  const downloadRatings = (): void => {
+    if (!ratingIntegrity.valid) return
+    downloadCsv(
+      `${filenameId}-${filenameSessionId}-subjective-ratings.csv`,
+      recordsToCsv(ratingIntegrity.records, CONDITION_RATING_COLUMNS),
+    )
+  }
+
+  const openQuestionnaire = (): void => {
+    if (!questionnaireAvailable || session.isPrototype) return
+    window.open(QUESTIONNAIRE_URL, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <main className="complete-screen screen">
       <section className="complete-card">
@@ -77,15 +97,27 @@ function CompleteScreen({
         </p>
         <p className="eyebrow">
           {session.isPrototype
-            ? `Prototype complete · ${prototypeCondition?.label ?? ''}`
+            ? `Prototype mode · ${prototypeCondition?.label ?? ''}`
             : 'Experiment complete'}
         </p>
-        <h1>{integrity.valid ? `${expectedTrials} formal trials recorded` : 'Data check required'}</h1>
-        <p className="intro">
+        <h1>
           {session.isPrototype
-            ? 'The selected prototype condition is complete.'
-            : 'All six blocks are complete. Please follow the researcher’s instructions to complete the external questionnaire.'}
-        </p>
+            ? integrity.valid
+              ? `${expectedTrials} formal trials recorded`
+              : 'Data check required'
+            : 'Experiment Complete'}
+        </h1>
+        {session.isPrototype ? (
+          <p className="intro">The selected prototype condition is complete.</p>
+        ) : (
+          <div className="completion-intro">
+            <p>Thank you for completing the experiment.</p>
+            <p>
+              Please download all four data files below. Do not rename, edit or open and
+              re-save the files. The filenames already contain your Participant ID.
+            </p>
+          </div>
+        )}
         <dl className="results">
           <div>
             <dt>Study session ID</dt>
@@ -110,25 +142,65 @@ function CompleteScreen({
           </div>
         )}
 
-        <div className="button-stack">
+        {!ratingIntegrity.valid && (
+          <div className="integrity-error" role="alert">
+            <strong>Subjective rating data is incomplete and cannot be exported.</strong>
+            <ul>{ratingIntegrity.errors.map((error) => <li key={error}>{error}</li>)}</ul>
+          </div>
+        )}
+
+        <div className="button-stack download-buttons" aria-label="Data file downloads">
           <button
-            className="primary-button"
+            className="secondary-button"
             type="button"
             onClick={downloadTrials}
             disabled={!integrity.valid}
           >
-            Download all formal data
+            Download Formal Trials
           </button>
-          {sessionInvalidEvents.length > 0 && (
-            <button className="secondary-button" type="button" onClick={downloadInvalidEvents}>
-              Download invalid events ({sessionInvalidEvents.length})
-            </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={downloadRatings}
+            disabled={!ratingIntegrity.valid}
+          >
+            Download Subjective Ratings
+          </button>
+          <button className="secondary-button" type="button" onClick={downloadPractice}>
+            Download Practice Attempts
+          </button>
+          <button className="secondary-button" type="button" onClick={downloadInvalidEvents}>
+            Download Invalid Events
+          </button>
+        </div>
+
+        <div className="questionnaire-panel">
+          {session.isPrototype ? (
+            <p>Questionnaire submission is not required in Prototype mode.</p>
+          ) : (
+            <>
+              <p>
+                After confirming that all four files are in your Downloads folder,
+                continue to the questionnaire.
+              </p>
+              <button
+                className="primary-button questionnaire-button"
+                type="button"
+                onClick={openQuestionnaire}
+                disabled={!questionnaireAvailable}
+              >
+                I Have Downloaded All Files — Continue to Questionnaire
+              </button>
+              {!questionnaireAvailable && (
+                <p className="questionnaire-unavailable">
+                  The questionnaire link will be provided by the researcher.
+                </p>
+              )}
+            </>
           )}
-          {sessionPracticeRecords.length > 0 && (
-            <button className="secondary-button" type="button" onClick={downloadPractice}>
-              Download practice data
-            </button>
-          )}
+        </div>
+
+        <div className="button-stack completion-actions">
           <button className="text-button" type="button" onClick={onReturnToSetup}>
             Return to setup
           </button>

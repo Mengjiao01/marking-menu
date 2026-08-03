@@ -21,6 +21,7 @@ Setup
 → Five practice targets
 → Practice complete
 → 25 formal trials
+→ Condition rating
 → Break
 → Next condition
 → Experiment complete
@@ -29,6 +30,10 @@ Setup
 Each participant completes six conditions, 30 practice targets, and 150 formal
 trials. Practice errors repeat the same target until it is selected correctly.
 Formal correct selections, wrong items, and misses all advance exactly once.
+After each block's 25 formal trials have been saved, participants answer five
+required questions on a six-point scale from 1 (Strongly disagree) to 6 (Strongly
+agree). The dimensions are ease of use, right-thumb comfort, target visibility,
+practicality, and intention to use.
 
 Participant IDs must match `P` followed by at least three digits, such as `P001`.
 Input is case-insensitive and stored in uppercase. The numeric part assigns one of
@@ -56,7 +61,7 @@ Development-only single-condition testing is enabled exclusively through:
 
 Prototype mode displays the condition selector, accepts a non-empty test ID, then
 shows Study Instructions once before the selected condition introduction. It runs
-one condition and stores `isPrototype=true`. The instructions screen retains a
+one condition followed by its Condition Rating and stores `isPrototype=true`. The instructions screen retains a
 clear Prototype label. The normal page has no control that can enable prototype
 mode.
 
@@ -80,7 +85,14 @@ Schedules and block IDs are fixed when a study starts. Resume derives the next
 practice target or formal trial from records already persisted for the current
 `studySessionId` and `blockSessionId`; it does not restore an in-progress pointer
 gesture. A crash after a record write therefore cannot cause that completed trial
-to be submitted again. Starting new preserves the old history.
+to be submitted again. After a block, Resume reconciles the saved phase against
+the actual formal records and ratings: fewer than 25 formal rows returns to Formal;
+25 rows without a rating opens Condition Rating; and 25 rows with a rating advances
+to Break or Complete. Rating writes use `studySessionId + conditionId` as a unique
+key, so double clicks, rerenders, and refreshes cannot append another response.
+Starting new preserves the old history. Unfinished sessions from another
+`configVersion` remain stored but are not offered for Resume into the current
+protocol.
 
 ## Local storage
 
@@ -91,6 +103,7 @@ marking-menu:trial-records
 marking-menu:practice-records
 marking-menu:invalid-events
 marking-menu:study-sessions
+marking-menu:condition-ratings
 ```
 
 Legacy or malformed entries are excluded from current exports. Formal export is
@@ -116,6 +129,37 @@ attempts use a separate schema with `practiceTargetNumber` and `attemptNumber`.
 Invalid events include their Practice/Formal phase and the same parameter
 snapshot.
 
+## Subjective rating export
+
+The completion page exports the current session's ratings as
+`participantId-studySessionId-subjective-ratings.csv`, using UTF-8 BOM, existing
+CSV escaping, and filename sanitization. Columns are:
+
+```text
+participantId,studySessionId,conditionId,conditionOrderPosition,sequenceCode,easeOfUse,comfort,targetVisibility,practicality,intentionToUse,configVersion,isPrototype
+```
+
+Formal export requires exactly one valid rating for each assigned condition;
+prototype export requires its one selected condition. Invalid or incomplete rating
+data is reported and the subjective download is disabled.
+
+## Completion downloads and questionnaire
+
+The formal completion page provides four independent CSV downloads: Formal
+Trials, Subjective Ratings, Practice Attempts, and Invalid Events. Participants
+download each file themselves. The page does not track download clicks or verify
+that the browser successfully saved a file.
+
+After confirming that all four files are in their Downloads folder, participants
+can open the external questionnaire in a new tab. The questionnaire URL has one
+configuration location: `src/config/questionnaire.ts`. Files are submitted using
+the private method agreed in advance between the researcher and participant; the
+web page does not upload them.
+
+Prototype mode retains all four downloads for testing but does not show or open
+the formal questionnaire. There is currently no database, automatic upload, file
+upload, or ZIP feature.
+
 ## Geometry
 
 All conditions share:
@@ -139,10 +183,11 @@ interaction rather than changing a target, radius, or angle.
 The current parameter snapshot is identified by:
 
 ```text
-configVersion = pilot-v2-start24
+configVersion = pilot-v3-condition-ratings6
 ```
 
-The start tolerance was increased from 20 to 24 CSS px after iPhone pilot data
+This pilot version adds a required six-point condition rating after each formal
+block. The start tolerance remains 24 CSS px; it was increased from 20 CSS px after iPhone pilot data
 showed that most invalid starts were near the previous activation boundary. The
 menu radius, target radius, safety margin, safe edge inset, target angles, and
 touch locations were not changed. `SAFE_EDGE_INSET` remains
@@ -168,6 +213,6 @@ npm run dev -- --host 0.0.0.0
 Use iPhone Safari in portrait orientation for data collection. A desktop mouse can
 be used for development testing.
 
-The application does not include a server, questionnaire, user login, statistical
-analysis, condition randomization beyond the defined sequences, or device-model
-detection.
+The application does not include a server, database, network upload, user login,
+statistical analysis, condition randomization
+beyond the defined sequences, or device-model detection.

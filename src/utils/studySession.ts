@@ -8,6 +8,7 @@ import {
   validateSequences,
 } from '../config/sequences'
 import {
+  ConditionRatingRecord,
   PracticeRecord,
   PrototypeConditionId,
   ScheduledTrial,
@@ -125,22 +126,74 @@ export function reconcileStudySession(
   session: StudySessionState,
   formalRecords: readonly TrialRecord[],
   practiceRecords: readonly PracticeRecord[],
+  ratings: readonly ConditionRatingRecord[],
 ): StudySessionState {
   const blockFormal = getBlockFormalRecords(session, formalRecords)
   const blockPractice = getBlockPracticeRecords(session, practiceRecords)
   const completedPracticeTargets = blockPractice.filter((record) => record.correct).length
+  const hasRating = ratings.some(
+    (rating) =>
+      rating.studySessionId === session.studySessionId &&
+      rating.conditionId === getCurrentConditionId(session),
+  )
 
   if (session.phase === 'practice' && completedPracticeTargets >= 5) {
     return withSessionPhase(session, 'practice-complete')
   }
 
-  if (session.phase === 'formal' && blockFormal.length >= FORMAL_TRIALS_PER_CONDITION) {
+  if (
+    ['formal', 'condition-rating', 'break', 'complete'].includes(session.phase) &&
+    blockFormal.length < FORMAL_TRIALS_PER_CONDITION
+  ) {
+    return withSessionPhase(session, 'formal')
+  }
+
+  if (blockFormal.length >= FORMAL_TRIALS_PER_CONDITION && !hasRating) {
+    return withSessionPhase(session, 'condition-rating')
+  }
+
+  if (blockFormal.length >= FORMAL_TRIALS_PER_CONDITION && hasRating) {
     const isLast =
       session.conditionOrderIndex >= session.conditionOrder.length - 1
     return withSessionPhase(session, isLast ? 'complete' : 'break')
   }
 
   return session
+}
+
+export interface RatingIntegrityResult {
+  valid: boolean
+  errors: string[]
+  records: ConditionRatingRecord[]
+}
+
+export function validateConditionRatings(
+  session: StudySessionState,
+  allRatings: readonly ConditionRatingRecord[],
+): RatingIntegrityResult {
+  const records = allRatings
+    .filter((record) => record.studySessionId === session.studySessionId)
+    .sort((a, b) => a.conditionOrderPosition - b.conditionOrderPosition)
+  const errors: string[] = []
+  const expected = session.isPrototype ? 1 : 6
+  if (records.length !== expected) {
+    errors.push(`Expected ${expected} condition rating${expected === 1 ? '' : 's'}, found ${records.length}.`)
+  }
+  session.conditionOrder.forEach((conditionId, index) => {
+    const matches = records.filter((record) => record.conditionId === conditionId)
+    if (matches.length !== 1) {
+      errors.push(`${conditionId} has ${matches.length} ratings instead of 1.`)
+      return
+    }
+    const record = matches[0]
+    if (record.conditionOrderPosition !== index + 1) errors.push(`${conditionId} has an invalid condition order position.`)
+    if (record.sequenceCode !== session.sequenceCode) errors.push(`${conditionId} has an invalid sequence code.`)
+    if (record.configVersion !== session.configVersion) errors.push(`${conditionId} uses a different experiment configuration.`)
+    if (record.isPrototype !== session.isPrototype) errors.push(`${conditionId} has an invalid prototype flag.`)
+    const values = [record.easeOfUse, record.comfort, record.targetVisibility, record.practicality, record.intentionToUse]
+    if (values.some((value) => !Number.isInteger(value) || value < 1 || value > 6)) errors.push(`${conditionId} contains an invalid rating value.`)
+  })
+  return { valid: errors.length === 0, errors, records }
 }
 
 export interface FormalIntegrityResult {

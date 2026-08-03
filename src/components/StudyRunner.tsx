@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { getCondition } from '../config/conditions'
 import {
+  ConditionRatingRecord,
   InvalidEventRecord,
   PracticeRecord,
   StudySessionState,
@@ -15,6 +17,7 @@ import {
 import BreakScreen from './BreakScreen'
 import CompleteScreen from './CompleteScreen'
 import ConditionIntroScreen from './ConditionIntroScreen'
+import ConditionRatingScreen from './ConditionRatingScreen'
 import ExperimentScreen from './ExperimentScreen'
 import InstructionsScreen from './InstructionsScreen'
 import PracticeCompleteScreen from './PracticeCompleteScreen'
@@ -24,10 +27,12 @@ interface StudyRunnerProps {
   records: readonly TrialRecord[]
   practiceRecords: readonly PracticeRecord[]
   invalidEvents: readonly InvalidEventRecord[]
+  ratings: readonly ConditionRatingRecord[]
   onSessionChange: (session: StudySessionState) => void
   onFormalRecord: (record: TrialRecord) => void
   onPracticeRecord: (record: PracticeRecord) => void
   onInvalidEvent: (record: InvalidEventRecord) => void
+  onRating: (record: ConditionRatingRecord) => boolean
   onReturnToSetup: () => void
 }
 
@@ -36,12 +41,28 @@ function StudyRunner({
   records,
   practiceRecords,
   invalidEvents,
+  ratings,
   onSessionChange,
   onFormalRecord,
   onPracticeRecord,
   onInvalidEvent,
+  onRating,
   onReturnToSetup,
 }: StudyRunnerProps): JSX.Element {
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const pageContainer = document.querySelector<HTMLElement>('.screen')
+      if (pageContainer) pageContainer.scrollTop = 0
+
+      if (document.scrollingElement) document.scrollingElement.scrollTop = 0
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [session.phase])
+
   const conditionId = getCurrentConditionId(session)
   const condition = getCondition(conditionId)
   const conditionOrderPosition = session.conditionOrderIndex + 1
@@ -74,9 +95,15 @@ function StudyRunner({
   }
 
   const completeFormalBlock = (): void => {
+    setPhase('condition-rating')
+  }
+
+  const submitRating = (record: ConditionRatingRecord): boolean => {
+    if (!onRating(record)) return false
     const isLast =
       session.conditionOrderIndex >= session.conditionOrder.length - 1
     setPhase(isLast ? 'complete' : 'break')
+    return true
   }
 
   switch (session.phase) {
@@ -167,6 +194,15 @@ function StudyRunner({
           }
         />
       )
+    case 'condition-rating':
+      return (
+        <ConditionRatingScreen
+          session={session}
+          condition={condition}
+          conditionOrderPosition={conditionOrderPosition}
+          onSubmit={submitRating}
+        />
+      )
     case 'complete':
       return (
         <CompleteScreen
@@ -174,6 +210,7 @@ function StudyRunner({
           records={records}
           invalidEvents={invalidEvents}
           practiceRecords={practiceRecords}
+          ratings={ratings}
           onReturnToSetup={onReturnToSetup}
         />
       )

@@ -48,7 +48,8 @@ button {
 
 .setup-screen,
 .complete-screen,
-.flow-screen {
+.flow-screen,
+.rating-screen {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,7 +58,8 @@ button {
 
 .setup-card,
 .complete-card,
-.flow-card {
+.flow-card,
+.rating-card {
   width: min(100%, 430px);
   padding: 28px 24px;
   border: 1px solid rgba(39, 59, 94, 0.09);
@@ -68,6 +70,115 @@ button {
 
 .flow-card {
   width: min(100%, 480px);
+}
+
+.rating-screen {
+  align-items: flex-start;
+  padding-bottom: max(120px, calc(env(safe-area-inset-bottom) + 96px));
+}
+
+.rating-card {
+  width: min(100%, 520px);
+  margin: auto;
+}
+
+.rating-card h1 {
+  font-size: clamp(1.9rem, 8vw, 2.55rem);
+}
+
+.rating-preview {
+  display: block;
+  width: min(100%, 300px);
+  height: 150px;
+  margin: -6px auto 14px;
+  overflow: hidden;
+  border: 1px solid #dfe5ef;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.scale-key {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+  color: #657084;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.scale-key span {
+  min-width: 0;
+}
+
+.rating-item {
+  min-width: 0;
+  margin: 0 0 28px;
+  padding: 0;
+  border: 0;
+}
+
+.rating-question {
+  display: block;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 0;
+  color: #263958;
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.rating-options-panel {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+  padding: 18px 16px;
+  border: 1px solid #dfe5ef;
+  border-radius: 14px;
+  background: #f8f9fc;
+}
+
+.rating-options-panel label {
+  display: block;
+  margin: 0;
+  min-width: 0;
+}
+
+.rating-options-panel input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.rating-options-panel span {
+  display: grid;
+  min-height: 46px;
+  place-items: center;
+  border: 1px solid #bec9dc;
+  border-radius: 10px;
+  background: #fff;
+  color: #263958;
+  font-weight: 800;
+}
+
+.rating-options-panel label.selected span {
+  border-color: #315fdf;
+  background: #315fdf;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(49, 95, 223, 0.16);
+}
+
+.rating-options-panel input:focus-visible + span {
+  outline: 3px solid rgba(49, 95, 223, 0.25);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .eyebrow {
@@ -432,6 +543,59 @@ form input[aria-invalid="true"] {
   text-align: center;
 }
 
+.completion-intro {
+  margin: 16px 0 26px;
+  color: #5b6678;
+  line-height: 1.55;
+}
+
+.completion-intro p {
+  margin: 0;
+}
+
+.completion-intro p + p {
+  margin-top: 12px;
+}
+
+.download-buttons button,
+.questionnaire-button {
+  height: auto;
+  min-width: 0;
+  padding: 12px 16px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.questionnaire-panel {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #dfe5ef;
+}
+
+.questionnaire-panel p {
+  margin: 0 0 16px;
+  color: #4e5a6d;
+  line-height: 1.5;
+}
+
+.questionnaire-panel .questionnaire-unavailable {
+  margin: 12px 0 0;
+  color: #727d8e;
+  font-size: 0.82rem;
+}
+
+.completion-actions {
+  margin-top: 14px;
+}
+
+@media (hover: none) and (pointer: coarse) and (max-width: 600px) {
+  .complete-screen {
+    align-items: flex-start;
+    padding-bottom: calc(env(safe-area-inset-bottom) + clamp(112px, 30vw, 144px));
+  }
+}
+
 .flow-card {
   text-align: center;
 }
@@ -446,6 +610,14 @@ form input[aria-invalid="true"] {
 
 .instructions-card .prototype-banner {
   margin-top: -6px;
+}
+
+@media (hover: none) and (pointer: coarse) and (max-width: 600px) {
+  .instructions-screen {
+    align-items: flex-start;
+    padding-top: calc(env(safe-area-inset-top) + clamp(28px, 8vw, 40px));
+    padding-bottom: calc(env(safe-area-inset-bottom) + clamp(112px, 30vw, 144px));
+  }
 }
 
 .instruction-summary,
@@ -633,7 +805,8 @@ form input[aria-invalid="true"] {
 @media (max-height: 620px) {
   .setup-screen,
   .complete-screen,
-  .flow-screen {
+  .flow-screen,
+  .rating-screen {
     align-items: flex-start;
   }
 

@@ -1,8 +1,24 @@
 import {
+  ConditionRatingRecord,
   InvalidEventRecord,
   PracticeRecord,
   TrialRecord,
 } from '../types/experiment'
+
+export const CONDITION_RATING_COLUMNS: readonly (keyof ConditionRatingRecord)[] = [
+  'participantId',
+  'studySessionId',
+  'conditionId',
+  'conditionOrderPosition',
+  'sequenceCode',
+  'easeOfUse',
+  'comfort',
+  'targetVisibility',
+  'practicality',
+  'intentionToUse',
+  'configVersion',
+  'isPrototype',
+]
 
 export const TRIAL_RECORD_COLUMNS: readonly (keyof TrialRecord)[] = [
   'studySessionId',

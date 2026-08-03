@@ -2,6 +2,7 @@ import { useState } from 'react'
 import SetupScreen from './components/SetupScreen'
 import StudyRunner from './components/StudyRunner'
 import {
+  ConditionRatingRecord,
   InvalidEventRecord,
   PracticeRecord,
   PrototypeConditionId,
@@ -10,10 +11,12 @@ import {
 } from './types/experiment'
 import {
   findIncompleteStudySession,
+  loadConditionRatings,
   loadInvalidEvents,
   loadPracticeRecords,
   loadTrialRecords,
   saveInvalidEvent,
+  saveConditionRating,
   savePracticeRecord,
   saveStudySession,
   saveTrialRecord,
@@ -47,6 +50,9 @@ function App(): JSX.Element {
   )
   const [invalidEvents, setInvalidEvents] = useState<InvalidEventRecord[]>(
     () => loadInvalidEvents(),
+  )
+  const [ratings, setRatings] = useState<ConditionRatingRecord[]>(
+    () => loadConditionRatings(),
   )
 
   const activateSession = (nextSession: StudySessionState): void => {
@@ -93,6 +99,7 @@ function App(): JSX.Element {
       resumeSession,
       records,
       practiceRecords,
+      ratings,
     )
     activateSession(reconciled)
   }
@@ -137,6 +144,16 @@ function App(): JSX.Element {
     touchSession()
   }
 
+  const handleRating = (record: ConditionRatingRecord): boolean => {
+    try {
+      if (!saveConditionRating(record)) return false
+      setRatings(loadConditionRatings())
+      return true
+    } catch {
+      return false
+    }
+  }
+
   if (!session) {
     return (
       <>
@@ -163,10 +180,12 @@ function App(): JSX.Element {
         records={records}
         practiceRecords={practiceRecords}
         invalidEvents={invalidEvents}
+        ratings={ratings}
         onSessionChange={updateSession}
         onFormalRecord={handleFormalRecord}
         onPracticeRecord={handlePracticeRecord}
         onInvalidEvent={handleInvalidEvent}
+        onRating={handleRating}
         onReturnToSetup={() => setSession(null)}
       />
       <OrientationWarning />
