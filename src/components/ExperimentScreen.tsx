@@ -466,7 +466,6 @@ function ExperimentScreen({
       : feedback === 'pointer-cancel'
       ? 'Gesture interrupted — try again'
       : ''
-  const phaseLabel = phase === 'Formal' ? 'Formal trials' : 'Practice'
   const visibleConditionLabel = isPrototype
     ? `${condition.conditionId} · ${condition.touchLocation} · ${condition.menuLayout}`
     : `Block ${conditionOrderPosition} of ${totalConditions}`
@@ -475,12 +474,12 @@ function ExperimentScreen({
     <main className="experiment-screen">
       <header className="experiment-header">
         <div>
-          <span>{phaseLabel}</span>
+          <span>Participant</span>
           <strong>{participantId}</strong>
         </div>
         <div className="condition-name">{visibleConditionLabel}</div>
         <div className="progress">
-          <span>{phaseLabel}</span>
+          <span>Progress</span>
           <strong>
             {trialIndex + 1}/{schedule.length}
           </strong>

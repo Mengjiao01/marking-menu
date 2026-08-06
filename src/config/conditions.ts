@@ -54,7 +54,7 @@ export const TRADITIONAL_MENU_RADIUS = 72
 export const TRADITIONAL_TARGET_RADIUS = 24
 export const START_TOLERANCE = 24
 export const SAFETY_MARGIN = 4
-export const EXPERIMENT_CONFIG_VERSION = 'pilot-v3-condition-ratings6'
+export const EXPERIMENT_CONFIG_VERSION = 'formal-v1-likert7'
 export const SAFE_EDGE_INSET =
   TRADITIONAL_MENU_RADIUS + TRADITIONAL_TARGET_RADIUS + SAFETY_MARGIN
 export const CENTRE_X_RATIO = 0.5

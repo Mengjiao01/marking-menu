@@ -31,8 +31,9 @@ Each participant completes six conditions, 30 practice targets, and 150 formal
 trials. Practice errors repeat the same target until it is selected correctly.
 Formal correct selections, wrong items, and misses all advance exactly once.
 After each block's 25 formal trials have been saved, participants answer five
-required questions on a six-point scale from 1 (Strongly disagree) to 6 (Strongly
-agree). The dimensions are ease of use, right-thumb comfort, target visibility,
+required questions on a 7-point Likert scale: 1 Strongly Disagree, 2 Disagree,
+3 Mostly Disagree, 4 Neutral, 5 Mostly Agree, 6 Agree, and 7 Strongly Agree.
+The dimensions are ease of use, right-thumb comfort, target visibility,
 practicality, and intention to use.
 
 Participant IDs must match `P` followed by at least three digits, such as `P001`.
@@ -183,10 +184,10 @@ interaction rather than changing a target, radius, or angle.
 The current parameter snapshot is identified by:
 
 ```text
-configVersion = pilot-v3-condition-ratings6
+configVersion = formal-v1-likert7
 ```
 
-This pilot version adds a required six-point condition rating after each formal
+This version uses a required 7-point Likert scale condition rating after each formal
 block. The start tolerance remains 24 CSS px; it was increased from 20 CSS px after iPhone pilot data
 showed that most invalid starts were near the previous activation boundary. The
 menu radius, target radius, safety margin, safe edge inset, target angles, and

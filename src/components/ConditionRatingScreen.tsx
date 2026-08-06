@@ -28,14 +28,15 @@ const QUESTIONS: readonly { field: RatingField; text: string }[] = [
   { field: 'practicality', text: 'This menu layout would be practical in a real mobile application.' },
   { field: 'intentionToUse', text: 'I would be willing to use this type of menu in a real mobile application.' },
 ]
-const RATINGS: readonly LikertRating[] = [1, 2, 3, 4, 5, 6]
+const RATINGS: readonly LikertRating[] = [1, 2, 3, 4, 5, 6, 7]
 const SCALE_LABELS = [
-  'Strongly disagree',
+  'Strongly Disagree',
   'Disagree',
-  'Slightly disagree',
-  'Slightly agree',
+  'Mostly Disagree',
+  'Neutral',
+  'Mostly Agree',
   'Agree',
-  'Strongly agree',
+  'Strongly Agree',
 ] as const
 const PREVIEW_SIZE = { width: 300, height: 260 }
 
@@ -55,7 +56,7 @@ function ConditionRatingScreen({
   const submit = (): void => {
     if (!complete || submitting.current) return
     const values = responses as Record<RatingField, LikertRating>
-    if (Object.values(values).some((value) => !Number.isInteger(value) || value < 1 || value > 6)) return
+    if (Object.values(values).some((value) => !Number.isInteger(value) || value < 1 || value > 7)) return
     submitting.current = true
     const saved = onSubmit({
       participantId: session.participantId,
@@ -99,7 +100,7 @@ function ConditionRatingScreen({
 
         <div className="scale-key" aria-label="Rating scale">
           {SCALE_LABELS.map((label, index) => (
-            <span key={label}><strong>{index + 1}</strong> = {label}</span>
+            <span key={label}><strong>{index + 1}</strong> {label}</span>
           ))}
         </div>
         <form onSubmit={(event) => { event.preventDefault(); submit() }}>

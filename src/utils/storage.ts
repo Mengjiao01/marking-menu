@@ -72,7 +72,7 @@ export function savePracticeRecord(record: PracticeRecord): void {
 }
 
 const isRating = (value: unknown): value is ConditionRatingRecord['easeOfUse'] =>
-  typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 6
+  typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 7
 
 function isConditionRatingRecord(
   value: Record<string, unknown>,
@@ -115,7 +115,9 @@ export function saveConditionRating(record: ConditionRatingRecord): boolean {
     records.some(
       (candidate) =>
         candidate.studySessionId === record.studySessionId &&
-        candidate.conditionId === record.conditionId,
+        candidate.conditionId === record.conditionId &&
+        candidate.configVersion === record.configVersion &&
+        candidate.isPrototype === record.isPrototype,
     )
   ) {
     return true

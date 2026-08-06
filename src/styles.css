@@ -131,7 +131,7 @@ button {
 
 .rating-options-panel {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 7px;
   min-width: 0;
   padding: 18px 16px;
@@ -142,8 +142,49 @@ button {
 
 .rating-options-panel label {
   display: block;
+  width: 100%;
+  max-width: none;
   margin: 0;
   min-width: 0;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .rating-card {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .rating-item {
+    margin-bottom: 32px;
+  }
+
+  .rating-question {
+    margin-bottom: 16px;
+  }
+
+  .rating-options-panel {
+    gap: clamp(3px, 1.2vw, 6px);
+    padding: 14px 10px;
+  }
+
+  .rating-options-panel span {
+    min-height: 44px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .rating-card {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .rating-options-panel {
+    gap: 3px;
+    padding-right: 6px;
+    padding-left: 6px;
+  }
 }
 
 .rating-options-panel input {

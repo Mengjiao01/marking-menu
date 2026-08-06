@@ -134,7 +134,9 @@ export function reconcileStudySession(
   const hasRating = ratings.some(
     (rating) =>
       rating.studySessionId === session.studySessionId &&
-      rating.conditionId === getCurrentConditionId(session),
+      rating.conditionId === getCurrentConditionId(session) &&
+      rating.configVersion === session.configVersion &&
+      rating.isPrototype === session.isPrototype,
   )
 
   if (session.phase === 'practice' && completedPracticeTargets >= 5) {
@@ -172,7 +174,12 @@ export function validateConditionRatings(
   allRatings: readonly ConditionRatingRecord[],
 ): RatingIntegrityResult {
   const records = allRatings
-    .filter((record) => record.studySessionId === session.studySessionId)
+    .filter(
+      (record) =>
+        record.studySessionId === session.studySessionId &&
+        record.configVersion === session.configVersion &&
+        record.isPrototype === session.isPrototype,
+    )
     .sort((a, b) => a.conditionOrderPosition - b.conditionOrderPosition)
   const errors: string[] = []
   const expected = session.isPrototype ? 1 : 6
@@ -191,7 +198,7 @@ export function validateConditionRatings(
     if (record.configVersion !== session.configVersion) errors.push(`${conditionId} uses a different experiment configuration.`)
     if (record.isPrototype !== session.isPrototype) errors.push(`${conditionId} has an invalid prototype flag.`)
     const values = [record.easeOfUse, record.comfort, record.targetVisibility, record.practicality, record.intentionToUse]
-    if (values.some((value) => !Number.isInteger(value) || value < 1 || value > 6)) errors.push(`${conditionId} contains an invalid rating value.`)
+    if (values.some((value) => !Number.isInteger(value) || value < 1 || value > 7)) errors.push(`${conditionId} contains an invalid rating value.`)
   })
   return { valid: errors.length === 0, errors, records }
 }

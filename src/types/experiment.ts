@@ -161,7 +161,7 @@ export interface PracticeRecord {
   userAgent: string
 }
 
-export type LikertRating = 1 | 2 | 3 | 4 | 5 | 6
+export type LikertRating = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 export interface ConditionRatingRecord {
   participantId: string
