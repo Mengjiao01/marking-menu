@@ -43,6 +43,7 @@ export function createStudySession(
   const formalSchedules: StudySessionState['formalSchedules'] = {}
   const blockSessionIds: StudySessionState['blockSessionIds'] = {}
 
+  // 顺序固定下来
   conditionOrder.forEach((conditionId, index) => {
     const condition = getCondition(conditionId)
     const practiceSchedule = createPracticeSchedule(condition)
@@ -128,6 +129,7 @@ export function reconcileStudySession(
   practiceRecords: readonly PracticeRecord[],
   ratings: readonly ConditionRatingRecord[],
 ): StudySessionState {
+  // 恢复时以已经保存的数据为准，避免重复做或跳过步骤
   const blockFormal = getBlockFormalRecords(session, formalRecords)
   const blockPractice = getBlockPracticeRecords(session, practiceRecords)
   const completedPracticeTargets = blockPractice.filter((record) => record.correct).length
@@ -213,6 +215,7 @@ export function validateFormalRecords(
   session: StudySessionState,
   allRecords: readonly TrialRecord[],
 ): FormalIntegrityResult {
+  // 导出前再核对一次数量、顺序和每个目标的次数
   const records = allRecords
     .filter(
       (record) =>

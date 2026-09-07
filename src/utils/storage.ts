@@ -29,6 +29,7 @@ function loadObjects(key: string): Record<string, unknown>[] {
     const parsed: unknown = JSON.parse(stored)
     return Array.isArray(parsed) ? parsed.filter(isPlainObject) : []
   } catch {
+    // 本地数据坏了就当作空数据，别让页面直接崩掉。
     return []
   }
 }
@@ -111,6 +112,7 @@ export function saveConditionRating(record: ConditionRatingRecord): boolean {
     return false
   }
   const records = loadConditionRatings()
+  // 同一场实验的同一条件只保留一份评分。
   if (
     records.some(
       (candidate) =>

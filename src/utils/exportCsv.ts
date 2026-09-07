@@ -15,6 +15,7 @@ export function recordsToCsv<T>(
 }
 
 export function downloadCsv(filename: string, csv: string): void {
+  // 避免 乱码
   const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

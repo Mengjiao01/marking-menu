@@ -116,6 +116,7 @@ function ExperimentScreen({
     () => getMenuItemPositions(condition.targets, centre, condition.menuRadius),
     [centre, condition.menuRadius, condition.targets],
   )
+  // 屏幕要能放下全部条件，实验中途才不会遇到布局变化。
   const boundaryIssues = useMemo(
     () =>
       CONDITIONS.reduce<string[]>((issues, candidate) => {
@@ -166,6 +167,7 @@ function ExperimentScreen({
           previousSize.height !== nextSize.height)
 
       if (sizeChanged && gestureRef.current) {
+        // 手势过程中尺寸变了，这次操作作废，避免坐标对不上。
         cancelGestureRef.current?.(gestureRef.current.lastPoint)
       }
 
@@ -271,7 +273,7 @@ function ExperimentScreen({
       try {
         arena.releasePointerCapture(gesture.pointerId)
       } catch {
-        // Capture can already be lost during cancellation or orientation changes.
+        // 取消手势或旋转屏幕时，浏览器可能已经释放了指针。
       }
     }
     gestureRef.current = null
@@ -298,6 +300,7 @@ function ExperimentScreen({
     const point = pointFromEvent(event)
 
     if (distance(point, centre) > condition.startTolerance) {
+      // 没从中心点按下，只记无效事件，不占正式试次。
       submittedRef.current = true
       setFeedback('invalid-start')
       onInvalidEvent(createInvalidEvent('invalid-start', point))
@@ -320,6 +323,7 @@ function ExperimentScreen({
       touchDown: point,
       lastPoint: point,
       pathLength: 0,
+      // 保存按下时的尺寸和中心点，后面记录用同一套坐标。
       stageSize: { ...arenaSize },
       activationCenter: { ...centre },
     }
@@ -407,6 +411,7 @@ function ExperimentScreen({
 
     setFeedback(correct ? 'correct' : 'wrong')
     scheduleFeedbackReset(() => {
+      // 正式阶段每次都往下走；练习答错则继续当前目标。
       const shouldAdvance = phase === 'Formal' || correct
       if (!shouldAdvance) {
         setAttemptNumber((current) => current + 1)
@@ -437,7 +442,7 @@ function ExperimentScreen({
       try {
         event.currentTarget.releasePointerCapture(event.pointerId)
       } catch {
-        // The browser may release capture immediately before pointerup is dispatched.
+        // pointerup 到达前，浏览器有时已经释放了指针。
       }
     }
     gestureRef.current = null

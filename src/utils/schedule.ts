@@ -8,6 +8,7 @@ function shuffleTrials(
   trials: ScheduledTrial[],
   random: () => number,
 ): ScheduledTrial[] {
+  // 从后往前交换，保证每种排列被抽到的机会一样。
   for (let index = trials.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(random() * (index + 1))
     const current = trials[index]

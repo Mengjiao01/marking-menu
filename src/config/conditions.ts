@@ -46,7 +46,7 @@ export const ADAPTIVE_ANGLES: Readonly<Record<TouchLocation, AngleMap>> = {
     T4: 225,
     T5: 270,
   },
-  // C6 intentionally matches C1 visually while retaining an Adaptive condition ID.
+  // C6 
   Centre: TRADITIONAL_ANGLES,
 }
 
