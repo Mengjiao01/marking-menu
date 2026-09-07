@@ -115,12 +115,13 @@ npm run dev -- --host 0.0.0.0
 
 ## deployment
 
-The application is deployed with GitHub Pages at:
+
+
+Final deployed website:
 
 ```text
-https://Mengjiao01.github.io/marking-menu/
+https://marking-menu.vercel.app/
 ```
-
 
 
 
